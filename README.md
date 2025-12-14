@@ -240,3 +240,7 @@ LEGEND:
 - `npm test` runs four scenario tests with fully mocked Gmail/LLM/Twilio (no external calls).
 - Mock fixtures live in `test/fixtures/emails.json` and `test/fixtures/llm_responses.json`; helpers in `test/helpers.js`.
 - Scenarios covered: happy-path notify, invalid LLM JSON, Twilio send failure, and LLM timeout handling.
+- Optional integration toggles (skipped unless enabled):
+  - `TEST_REAL_LLM=1 npm test` → real LLM, mocked Gmail/Twilio
+  - `TEST_REAL_LLM=1 TEST_REAL_GMAIL=1 npm test` → real Gmail+LLM, mocked Twilio (requires Gmail creds set)
+  - Tests never use real Twilio to avoid live SMS; keep `TEST_REAL_TWILIO` unset.

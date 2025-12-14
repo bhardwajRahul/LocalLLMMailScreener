@@ -405,7 +405,7 @@ export const startApp = async (overrides = {}) => {
   };
 };
 
-if (process.env.NO_AUTO_START !== '1') {
+if (process.env.NO_AUTO_START !== '1' && process.env.NODE_ENV !== 'test') {
   startApp().catch((err) => {
     log('Fatal error', err);
     process.exit(1);
