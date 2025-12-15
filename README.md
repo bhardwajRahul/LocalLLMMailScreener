@@ -222,7 +222,8 @@ LEGEND:
 - Optional knobs: `PORT`, `POLL_INTERVAL_MS`, `POLL_MAX_RESULTS`, `GMAIL_QUERY`, `STATE_PATH`, `MAX_PROCESSED_IDS`, `RECENT_LIMIT`, `MAX_SMS_CHARS`, `MAX_EMAIL_BODY_CHARS`, `MAX_CONCURRENCY`, `DRY_RUN`, `LLM_*` (base URL/model/temperature/timeouts)
 
 ### Behavior
-- Polls Gmail inbox on the configured interval; fetches raw messages, parses to text (fallback from HTML).
+- Polls Gmail inbox on the configured interval; builds the Gmail query from `GMAIL_QUERY` (defaults to `newer_than:1d`) and automatically adds `after:<last_poll_at>` so we only pull mail newer than the last poll window.
+- When `TEST_REAL_GMAIL=1`, the poll fetch is capped at 3 messages to keep integration runs light.
 - Emails are normalized and trimmed before LLM use (reply chains/forwards and footer noise removed, attachments kept as metadata only, body capped to `MAX_EMAIL_BODY_CHARS`, default 4000, with head+tail preserved).
 - Every new email is sent to the local LLM (`/v1/chat/completions`), enforcing strict JSON output.
 - If `notify=true`, sends SMS via Twilio (or skips when `DRY_RUN=true`) with truncation to `MAX_SMS_CHARS`.

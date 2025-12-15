@@ -15,11 +15,21 @@ import { createStateManager } from './state.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const log = (...args) => console.log(new Date().toISOString(), ...args);
 
+const buildGmailQuery = (baseQuery, lastPollAtMs) => {
+  const trimmed = (baseQuery || '').trim();
+  const query = trimmed.length ? trimmed : 'newer_than:1d';
+  const afterSeconds = lastPollAtMs ? Math.floor(lastPollAtMs / 1000) : 0;
+  if (afterSeconds) {
+    return `${query} after:${afterSeconds}`;
+  }
+  return query;
+};
+
 export const buildConfig = (env = process.env) => ({
   port: parseInt(env.PORT || '3000', 10),
   pollIntervalMs: parseInt(env.POLL_INTERVAL_MS || '15000', 10),
   pollMaxResults: parseInt(env.POLL_MAX_RESULTS || '25', 10),
-  gmailQuery: env.GMAIL_QUERY || 'newer_than:7d',
+  gmailQuery: env.GMAIL_QUERY || 'newer_than:1d',
   statePath: env.STATE_PATH || './data/state.json',
   maxProcessedIds: parseInt(env.MAX_PROCESSED_IDS || '50000', 10),
   recentLimit: parseInt(env.RECENT_LIMIT || '200', 10),
