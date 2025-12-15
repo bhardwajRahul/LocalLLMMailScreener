@@ -156,13 +156,22 @@ const processSingleMessage = async (ctx, messageMeta, state) => {
         gmail_link: gmailLink,
         from: parsed.from,
         subject: parsed.subject,
-        trim_stats: trimmedEmail.stats,
-        decided_at: Date.now()
-      };
-    }
+      trim_stats: trimmedEmail.stats,
+      decided_at: Date.now()
+    };
+  }
 
-    ctx.stateManager.addDecision(decision);
-    const shouldNotify = !!decision.notify;
+  // Fire optional hook for immediate reporting (used by integration test logging).
+  if (ctx.onDecision) {
+    try {
+      ctx.onDecision(decision);
+    } catch (err) {
+      log('onDecision hook error', err.message);
+    }
+  }
+
+  ctx.stateManager.addDecision(decision);
+  const shouldNotify = !!decision.notify;
 
     if (shouldNotify) {
       const packet = decision.message_packet || {};
@@ -388,6 +397,7 @@ export const startApp = async (overrides = {}) => {
     limiter,
     callLLM: overrides.llmCaller || callLLM,
     llmHealthCheck: overrides.llmHealthChecker || healthCheckLLM,
+    onDecision: overrides.onDecision,
     pollLock: false,
     pollTimer: null
   };

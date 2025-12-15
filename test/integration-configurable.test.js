@@ -91,6 +91,13 @@ test(
       },
       // Use real Gmail client and LLM caller (default)
       twilioClient: twilioMock,
+      onDecision: (d) => {
+        console.log(
+          `[LLM DECISION] notify=${d.notify ? 'YES' : 'no '} subject="${d.subject}" reason="${d.reason || ''}" tokens=${
+            d.tokens ?? 'n/a'
+          } latency_ms=${d.llm_latency_ms ?? 'n/a'}`
+        );
+      },
       startPolling: false,
       skipTwilioStartupCheck: true,
       startServer: false
@@ -102,13 +109,6 @@ test(
       const decisions = state.recent_decisions || [];
       const processedCount = Object.keys(state.processed || {}).length;
       const cappedDecisions = decisions.slice(-3); // only expect up to 3 pulled
-
-      console.log('Real Gmail decision summaries (up to 3):');
-      cappedDecisions.forEach((d, idx) => {
-        console.log(
-          `[${idx + 1}] notify=${d.notify ? 'YES' : 'no '} subject="${d.subject}" reason="${d.reason || ''}"`
-        );
-      });
 
       assert.strictEqual(
         cappedDecisions.length,
@@ -128,6 +128,14 @@ test(
         assert.ok(
           !decision.reason?.startsWith('LLM failure'),
           `LLM must succeed for message ${decision.id || decision.subject}: ${decision.reason}`
+        );
+        assert.ok(
+          Number.isFinite(decision.tokens),
+          `LLM must return token count for message ${decision.id || decision.subject}`
+        );
+        assert.ok(
+          typeof decision.llm_latency_ms === 'number',
+          `LLM must return latency for message ${decision.id || decision.subject}`
         );
       }
 
