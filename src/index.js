@@ -210,11 +210,15 @@ const pollGmail = async (ctx) => {
   if (ctx.pollLock) return;
   ctx.pollLock = true;
   const state = ctx.stateManager.getState();
+  const lastPollAt = state.stats.gmail.last_poll_at || 0;
+  const effectiveQuery = buildGmailQuery(ctx.config.gmailQuery, lastPollAt);
   ctx.stateManager.recordGmailPoll();
   try {
+    const effectiveMaxResults =
+      process.env.TEST_REAL_GMAIL === '1' ? Math.min(ctx.config.pollMaxResults, 3) : ctx.config.pollMaxResults;
     const messages = await listMessages(ctx.gmailClient, {
-      maxResults: ctx.config.pollMaxResults,
-      query: ctx.config.gmailQuery
+      maxResults: effectiveMaxResults,
+      query: effectiveQuery
     });
     ctx.stateManager.setGmailOk();
     const newMessages = messages.filter((m) => !state.processed[m.id]);

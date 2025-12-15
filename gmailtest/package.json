@@ -1,0 +1,14 @@
+{
+  "name": "gmailtest",
+  "version": "1.0.0",
+  "description": "Minimal Gmail API test to fetch one email",
+  "main": "index.js",
+  "scripts": {
+    "get-token": "node get-token.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "googleapis": "^131.0.0"
+  }
+}

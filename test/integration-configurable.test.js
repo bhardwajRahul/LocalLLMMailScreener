@@ -97,8 +97,41 @@ test(
     });
     try {
       await appRunner.pollNow();
-      const stats = appRunner.ctx.stateManager.getState().stats;
-      assert.ok(!stats.gmail.last_error, 'Gmail should not report errors');
+      const state = appRunner.ctx.stateManager.getState();
+      const stats = state.stats;
+      const decisions = state.recent_decisions || [];
+      const processedCount = Object.keys(state.processed || {}).length;
+      const cappedDecisions = decisions.slice(-3); // only expect up to 3 pulled
+
+      console.log('Real Gmail decision summaries (up to 3):');
+      cappedDecisions.forEach((d, idx) => {
+        console.log(
+          `[${idx + 1}] notify=${d.notify ? 'YES' : 'no '} subject="${d.subject}" reason="${d.reason || ''}"`
+        );
+      });
+
+      assert.strictEqual(
+        cappedDecisions.length,
+        processedCount,
+        `should have one decision per processed email (got decisions=${cappedDecisions.length}, processed=${processedCount})`
+      );
+      assert.ok(
+        cappedDecisions.length <= 3,
+        `should not exceed 3 decisions when TEST_REAL_GMAIL=1 (got ${cappedDecisions.length})`
+      );
+      for (const decision of cappedDecisions) {
+        assert.strictEqual(
+          typeof decision.notify,
+          'boolean',
+          `LLM must explicitly set notify boolean for message ${decision.id || decision.subject}`
+        );
+        assert.ok(
+          !decision.reason?.startsWith('LLM failure'),
+          `LLM must succeed for message ${decision.id || decision.subject}: ${decision.reason}`
+        );
+      }
+
+      assert.ok(!stats.gmail.last_error, `Gmail should not report errors (last_error=${stats.gmail.last_error})`);
     } finally {
       await appRunner.stop();
       await cleanupFile(statePath);
