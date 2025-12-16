@@ -224,7 +224,20 @@ LEGEND:
   - `NOTIFICATION_SERVICE` (`twilio` | `pushover`, default `twilio`)
   - Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `TWILIO_TO`
   - Pushover (emergency priority=2): `PUSHOVER_TOKEN` (or `PUSHOVER_API_TOKEN`), `PUSHOVER_USER`, optional `PUSHOVER_DEVICE`
-- Optional knobs: `PORT`, `POLL_INTERVAL_MS`, `POLL_GRACE_MS` (default 5000ms overlap to avoid gaps), `POLL_WINDOW_MS` (override window size; defaults to `POLL_INTERVAL_MS`), `POLL_MAX_RESULTS`, `GMAIL_SUMMARY_INTERVAL_MIN` (minutes between Gmail poll summaries; set <=0 to log every poll instead), `GMAIL_QUERY`, `STATE_PATH`, `MAX_PROCESSED_IDS`, `RECENT_LIMIT`, `MAX_SMS_CHARS`, `MAX_EMAIL_BODY_CHARS`, `MAX_LLM_CONCURRENCY` (alias: legacy `MAX_CONCURRENCY`), `MAX_LLM_QUEUE` (default 20), `DRY_RUN`, `LOG_DASHBOARD_REQUESTS` (default false), `LLM_*` (base URL/model/temperature/timeouts)
+- Optional knobs: `PORT`, `POLL_INTERVAL_MS`, `POLL_GRACE_MS` (default 5000ms overlap to avoid gaps), `POLL_WINDOW_MS` (override window size; defaults to `POLL_INTERVAL_MS`), `POLL_MAX_RESULTS`, `GMAIL_SUMMARY_INTERVAL_MIN` (minutes between Gmail poll summaries; set <=0 to log every poll instead), `GMAIL_QUERY`, `STATE_PATH`, `MAX_PROCESSED_IDS`, `RECENT_LIMIT`, `MAX_SMS_CHARS`, `MAX_EMAIL_BODY_CHARS`, `MAX_LLM_CONCURRENCY` (alias: legacy `MAX_CONCURRENCY`), `MAX_LLM_QUEUE` (default 20), `DRY_RUN`, `LOG_DASHBOARD_REQUESTS` (default false), `LLM_*` (base URL/model/temperature/timeouts), `SYSTEM_PROMPT_PATH` (default `./data/system_prompt.txt`)
+
+### System Prompt
+The LLM system prompt is loaded from an external file, allowing you to customize the screening behavior without restarting the server. The prompt is re-read from disk on every LLM call, so edits take effect immediately on the next email processed.
+
+- **Default location**: `./data/system_prompt.txt`
+- **Override via**: `SYSTEM_PROMPT_PATH` environment variable
+- **Fallback**: If the file is missing or unreadable, a minimal default prompt is used
+
+Edit `data/system_prompt.txt` to customize:
+- What types of emails trigger notifications
+- How urgency levels are assigned
+- Domain-specific rules (e.g., security alerts, family events)
+- Output format requirements
 
 ### Behavior
 - Polls Gmail inbox on the configured interval and immediately enqueues any new IDs found (bounded by `MAX_LLM_QUEUE`, default 20). The Gmail poll itself does not wait for LLM work. Oldest queued emails are dropped (counted in stats) if the queue would exceed the cap. Each poll still uses `after:<now - (POLL_WINDOW_MS||POLL_INTERVAL_MS) - POLL_GRACE_MS>` (default 5s grace); widen the window if processing delays exceed the interval. Successful polls are summarized every `GMAIL_SUMMARY_INTERVAL_MIN` minutes (default 15, first summary after the first poll), while failures still log immediately.

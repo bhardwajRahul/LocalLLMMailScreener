@@ -132,6 +132,10 @@
       border: 1px solid var(--glass-border);
       border-radius: 10px;
       padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 88px;
     }
 
     .stat-label {
@@ -139,13 +143,13 @@
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      margin-bottom: 6px;
     }
 
     .stat-value {
       font-size: 24px;
       font-weight: 700;
       letter-spacing: -0.02em;
+      margin-top: auto;
     }
 
     /* Notifications Section */
@@ -153,33 +157,9 @@
       margin-bottom: 16px;
     }
 
-    .notifications-scroll {
-      max-height: 500px;
-      overflow-y: auto;
-      padding-right: 8px;
-    }
-
-    .notifications-scroll::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .notifications-scroll::-webkit-scrollbar-track {
-      background: rgba(255,255,255,0.05);
-      border-radius: 3px;
-    }
-
-    .notifications-scroll::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,0.15);
-      border-radius: 3px;
-    }
-
-    .notifications-scroll::-webkit-scrollbar-thumb:hover {
-      background: rgba(255,255,255,0.25);
-    }
-
     .notifications-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 14px;
       align-items: stretch;
     }
@@ -191,7 +171,7 @@
       padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       height: 100%;
       transition: background 0.2s ease, border-color 0.2s ease;
     }
@@ -208,14 +188,26 @@
     .notif-row {
       display: flex;
       justify-content: space-between;
+      align-items: baseline;
       font-size: 12px;
       color: var(--muted);
+      gap: 8px;
+    }
+
+    .notif-row span {
+      white-space: nowrap;
+    }
+
+    .notif-row span:first-child {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .notif-label {
-      color: var(--muted);
       opacity: 0.7;
-      margin-right: 4px;
+      margin-right: 3px;
     }
 
     .notif-field {
@@ -224,20 +216,30 @@
     }
 
     .notif-field .notif-label {
-      display: inline;
+      color: var(--muted);
     }
 
     .notif-field .notif-value {
       color: var(--text);
     }
 
-    .notif-field .notif-value.truncate {
-      display: inline-block;
-      max-width: calc(100% - 60px);
-      white-space: nowrap;
+    .notif-field.subject .notif-value {
+      font-weight: 600;
+    }
+
+    .notif-field.reason {
+      margin-top: 4px;
+      flex: 1;
+      min-height: 0;
       overflow: hidden;
-      text-overflow: ellipsis;
-      vertical-align: bottom;
+    }
+
+    .notif-field.reason .notif-value {
+      opacity: 0.85;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .notif-footer {
@@ -245,33 +247,34 @@
       align-items: center;
       justify-content: space-between;
       padding-top: 10px;
-      margin-top: 4px;
-      border-top: 1px solid rgba(255,255,255,0.06);
-      gap: 12px;
-      flex-wrap: wrap;
       margin-top: auto;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      gap: 8px;
     }
 
     .notif-id {
-      font-size: 10px;
+      font-size: 9px;
       color: var(--muted);
       font-family: monospace;
-      opacity: 0.6;
-      max-width: 200px;
+      opacity: 0.5;
+      flex: 1;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .notif-link {
       color: var(--accent);
       text-decoration: none;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
-      padding: 5px 12px;
+      padding: 5px 10px;
       border-radius: 6px;
       background: rgba(65,214,255,0.1);
       transition: background 0.2s ease;
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .notif-link:hover {
@@ -282,14 +285,12 @@
       text-align: center;
       padding: 40px 20px;
       color: var(--muted);
+      grid-column: 1 / -1;
     }
 
     /* Responsive */
     @media (max-width: 900px) {
       .health-row {
-        grid-template-columns: 1fr;
-      }
-      .notifications-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -298,7 +299,9 @@
       body { padding: 16px; }
       h1 { font-size: 1.4rem; }
       .stat-value { font-size: 20px; }
-      .notifications-scroll { max-height: 400px; }
+      .notifications-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -321,9 +324,7 @@
         <span class="card-title">Recent Notifications</span>
         <span class="card-meta">Latest first · max 50</span>
       </div>
-      <div class="notifications-scroll">
-        <div class="notifications-grid" id="notifications-grid"></div>
-      </div>
+      <div class="notifications-grid" id="notifications-grid"></div>
     </div>
   </div>
 
@@ -343,6 +344,20 @@
         hour: 'numeric', minute: '2-digit' 
       });
     };
+
+    const fmtNum = (n) => {
+      if (n == null || isNaN(n)) return '0';
+      const abs = Math.abs(n);
+      if (abs >= 1e12) return (n / 1e12).toFixed(abs >= 1e13 ? 0 : 2).replace(/\.?0+$/, '') + 'T';
+      if (abs >= 1e9) return (n / 1e9).toFixed(abs >= 1e10 ? 1 : 2).replace(/\.?0+$/, '') + 'B';
+      if (abs >= 1e6) return (n / 1e6).toFixed(abs >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M';
+      if (abs >= 1e5) return (n / 1e3).toFixed(0) + 'K';
+      if (abs >= 1e4) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+      if (abs >= 1e3) return (n / 1e3).toFixed(2).replace(/\.?0+$/, '') + 'K';
+      return String(n);
+    };
+
+    const fmtComma = (n) => (n || 0).toLocaleString();
 
     const statusBadge = (ok) => {
       const cls = ok ? 'ok' : 'fail';
@@ -398,13 +413,13 @@
       const queue = stats.llm_queue || {};
       const tps = stats.llm_tps || {};
       const items = [
-        { label: 'Total Tokens (est)', value: stats.tokens_total_est || 0 },
-        { label: 'Tokens 24h (est)', value: stats.last_24h_tokens_est || 0 },
-        { label: 'Emails Processed', value: stats.emails_processed || 0 },
-        { label: 'Notifications Sent', value: stats.notifications_sent || 0 },
+        { label: 'Total Tokens', value: fmtNum(stats.tokens_total_est || 0) },
+        { label: 'Tokens 24h', value: fmtNum(stats.last_24h_tokens_est || 0) },
+        { label: 'Emails', value: fmtComma(stats.emails_processed) },
+        { label: 'Notifications', value: stats.notifications_sent || 0 },
         { label: 'LLM Requests', value: stats.llm_requests || 0 },
-        { label: 'Queue Depth', value: `${queue.depth || 0}/${queue.max_queue || 0}` },
-        { label: 'Queue Dropped', value: queue.dropped_total || 0 },
+        { label: 'Queue', value: `${queue.depth || 0}/${queue.max_queue || 0}` },
+        { label: 'Dropped', value: queue.dropped_total || 0 },
         { label: 'TPS (avg 5)', value: tps.avg_tps || 0 }
       ];
 
@@ -418,41 +433,36 @@
 
     const renderNotifications = (sends) => {
       if (!sends || sends.length === 0) {
-        notificationsGrid.innerHTML = `
-          <div class="empty-state">No notifications yet</div>
-        `;
+        notificationsGrid.innerHTML = '<div class="empty-state">No notifications yet</div>';
         return;
       }
 
       notificationsGrid.innerHTML = sends.map((s) => {
         const urgency = s.urgency || 'normal';
         const notifId = s.notification_id || s.twilio_sid || s.pushover_receipt || '—';
-        const preview = (s.sms_preview || '').replace(/</g, '&lt;');
+        const reason = (s.sms_preview || '').replace(/</g, '&lt;');
         const gmailLink = s.gmail_link 
           ? `<a href="${s.gmail_link}" target="_blank" class="notif-link">Open in Gmail</a>` 
           : '';
-        const provider = s.notification_provider || 'notification';
-        const reasonText = (s.reason || preview || '').trim();
 
         return `
           <div class="notification-card ${urgency}">
             <div class="notif-row">
-              <span><span class="notif-label">From:</span> ${s.from || '—'}</span>
-              <span><span class="notif-label">Sent:</span> ${fmtTimeShort(s.sent_at)}</span>
+              <span><span class="notif-label">From:</span>${s.from || '—'}</span>
+              <span><span class="notif-label">Sent:</span>${fmtTimeShort(s.sent_at)}</span>
             </div>
             <div class="notif-row">
-              <span><span class="notif-label">Via:</span> ${provider}</span>
-              <span><span class="notif-label">Tokens:</span> ${s.tokens_for_email || 0}</span>
+              <span><span class="notif-label">Via:</span>${(s.notification_provider || '').toUpperCase() || '—'}</span>
+              <span><span class="notif-label">Tokens:</span>${s.tokens_for_email || 0}</span>
             </div>
-            <div class="notif-field">
+            <div class="notif-field subject">
               <span class="notif-label">Subject:</span>
-              <span class="notif-value truncate">${s.subject || 'No subject'}</span>
+              <span class="notif-value">${s.subject || 'No subject'}</span>
             </div>
-            ${reasonText ? `
-            <div class="notif-field">
+            <div class="notif-field reason">
               <span class="notif-label">Reason:</span>
-              <span class="notif-value">${reasonText}</span>
-            </div>` : ''}
+              <span class="notif-value">${reason}</span>
+            </div>
             <div class="notif-footer">
               <span class="notif-id">${notifId}</span>
               ${gmailLink}

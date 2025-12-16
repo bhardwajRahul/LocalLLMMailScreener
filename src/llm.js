@@ -1,7 +1,7 @@
 import axios from 'axios';
+import fs from 'fs';
 
-export const SYSTEM_PROMPT = `
-You are a strict JSON generator for triaging emails. Output ONLY valid JSON with NO markdown, NO code fences, NO extra text.
+const DEFAULT_SYSTEM_PROMPT = `You are a strict JSON generator for triaging emails. Output ONLY valid JSON with NO markdown, NO code fences, NO extra text.
 Schema:
 {
   "notify": true|false,
@@ -15,12 +15,18 @@ Schema:
 }
 If email needs my attention (action required, time-sensitive, direct question, security/finance/ops issues), notify=true; otherwise false.
 
-Security rules:
-- Routine camera motion for passing vehicles/animals is noise -> notify=false.
-- Notify=true for real alarms: siren, glass break, water/leak sensor, smoke/CO, door/window left open, abnormal/after-hours events (e.g., garage opens at 3am), or repeated/abnormal sensor behavior.
-- Family priority: always notify=true for school delays/closures, schedule changes, or events involving my children Mae or Effie (any mention of their names tied to school or activities).
+If notify=false, still provide a short title/body. Ensure JSON is valid and matches the schema exactly.`;
 
-If notify=false, still provide a short title/body. Ensure JSON is valid and matches the schema exactly.`.trim();
+export const getSystemPrompt = (promptPath) => {
+  if (promptPath) {
+    try {
+      return fs.readFileSync(promptPath, 'utf-8').trim();
+    } catch (err) {
+      console.error(`[LLM] Failed to read system prompt from ${promptPath}: ${err.message}, using default`);
+    }
+  }
+  return DEFAULT_SYSTEM_PROMPT;
+};
 
 const buildUserPrompt = (emailObj, maxSmsChars) => {
   const emailJson = JSON.stringify(emailObj, null, 2);
@@ -75,11 +81,13 @@ export const callLLM = async ({
   maxOutputTokens,
   timeoutMs,
   emailObj,
-  maxSmsChars
+  maxSmsChars,
+  systemPromptPath
 }) => {
   const url = `${llmBaseUrl.replace(/\/+$/, '')}/v1/chat/completions`;
+  const systemPrompt = getSystemPrompt(systemPromptPath);
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     { role: 'user', content: buildUserPrompt(emailObj, maxSmsChars) }
   ];
   const payload = {

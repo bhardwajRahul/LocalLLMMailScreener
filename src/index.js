@@ -57,6 +57,7 @@ export const buildConfig = (env = process.env) => ({
   llmTemperature: parseFloat(env.LLM_TEMPERATURE || '0.2'),
   llmMaxOutputTokens: parseInt(env.LLM_MAX_OUTPUT_TOKENS || '300', 10),
   llmTimeoutMs: parseInt(env.LLM_TIMEOUT_MS || '120000', 10),
+  systemPromptPath: env.SYSTEM_PROMPT_PATH || './data/system_prompt.txt',
   maxEmailBodyChars: parseInt(env.MAX_EMAIL_BODY_CHARS || '4000', 10),
   dryRun: (env.DRY_RUN || 'false').toLowerCase() === 'true',
   notificationService: (env.NOTIFICATION_SERVICE || 'twilio').toLowerCase(),
@@ -279,7 +280,8 @@ const processSingleMessage = async (ctx, messageMeta) => {
         maxOutputTokens: ctx.config.llmMaxOutputTokens,
         timeoutMs: ctx.config.llmTimeoutMs,
         emailObj: trimmedEmail,
-        maxSmsChars: ctx.config.maxSmsChars
+        maxSmsChars: ctx.config.maxSmsChars,
+        systemPromptPath: ctx.config.systemPromptPath
       });
       ctx.stateManager.addTokenEvent(llmRes.tokens);
       ctx.stateManager.setLLMOk(llmRes.latencyMs);
