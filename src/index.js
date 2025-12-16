@@ -59,6 +59,7 @@ export const buildConfig = (env = process.env) => ({
   maxEmailBodyChars: parseInt(env.MAX_EMAIL_BODY_CHARS || '4000', 10),
   dryRun: (env.DRY_RUN || 'false').toLowerCase() === 'true',
   notificationService: (env.NOTIFICATION_SERVICE || 'twilio').toLowerCase(),
+  logDashboardRequests: (env.LOG_DASHBOARD_REQUESTS || 'false').toLowerCase() === 'true',
   llmApiKey: env.LLM_API_KEY || '',
   gmailClientId: env.GMAIL_CLIENT_ID,
   gmailClientSecret: env.GMAIL_CLIENT_SECRET,
@@ -581,7 +582,12 @@ const startServer = (ctx) => {
   const app = express();
   app.use(express.json());
   app.use((req, res, next) => {
-    if (req.path === '/' || req.path.startsWith('/api')) {
+    const isDashboardPath = req.path === '/' || req.path.startsWith('/api');
+    if (isDashboardPath && !ctx.dashboardFirstLogged) {
+      ctx.dashboardFirstLogged = true;
+      logEvent('DASHBOARD', { event: 'first_hit', path: req.path, method: req.method });
+    }
+    if (ctx.config.logDashboardRequests && isDashboardPath) {
       logEvent('DASHBOARD', { path: req.path, method: req.method });
     }
     next();
@@ -644,7 +650,8 @@ export const startApp = async (overrides = {}) => {
     llmHealthCheck: overrides.llmHealthChecker || healthCheckLLM,
     onDecision: overrides.onDecision,
     pollLock: false,
-    pollTimer: null
+    pollTimer: null,
+    dashboardFirstLogged: false
   };
 
   const llmQueue = createLlmQueue({

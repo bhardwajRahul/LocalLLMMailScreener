@@ -222,7 +222,7 @@ LEGEND:
   - `NOTIFICATION_SERVICE` (`twilio` | `pushover`, default `twilio`)
   - Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `TWILIO_TO`
   - Pushover (emergency priority=2): `PUSHOVER_TOKEN` (or `PUSHOVER_API_TOKEN`), `PUSHOVER_USER`, optional `PUSHOVER_DEVICE`
-- Optional knobs: `PORT`, `POLL_INTERVAL_MS`, `POLL_GRACE_MS` (default 5000ms overlap to avoid gaps), `POLL_WINDOW_MS` (override window size; defaults to `POLL_INTERVAL_MS`), `POLL_MAX_RESULTS`, `GMAIL_QUERY`, `STATE_PATH`, `MAX_PROCESSED_IDS`, `RECENT_LIMIT`, `MAX_SMS_CHARS`, `MAX_EMAIL_BODY_CHARS`, `MAX_LLM_CONCURRENCY` (alias: legacy `MAX_CONCURRENCY`), `MAX_LLM_QUEUE` (default 20), `DRY_RUN`, `LLM_*` (base URL/model/temperature/timeouts)
+- Optional knobs: `PORT`, `POLL_INTERVAL_MS`, `POLL_GRACE_MS` (default 5000ms overlap to avoid gaps), `POLL_WINDOW_MS` (override window size; defaults to `POLL_INTERVAL_MS`), `POLL_MAX_RESULTS`, `GMAIL_QUERY`, `STATE_PATH`, `MAX_PROCESSED_IDS`, `RECENT_LIMIT`, `MAX_SMS_CHARS`, `MAX_EMAIL_BODY_CHARS`, `MAX_LLM_CONCURRENCY` (alias: legacy `MAX_CONCURRENCY`), `MAX_LLM_QUEUE` (default 20), `DRY_RUN`, `LOG_DASHBOARD_REQUESTS` (default false), `LLM_*` (base URL/model/temperature/timeouts)
 
 ### Behavior
 - Polls Gmail inbox on the configured interval and immediately enqueues any new IDs found (bounded by `MAX_LLM_QUEUE`, default 20). The Gmail poll itself does not wait for LLM work. Oldest queued emails are dropped (counted in stats) if the queue would exceed the cap. Each poll still uses `after:<now - (POLL_WINDOW_MS||POLL_INTERVAL_MS) - POLL_GRACE_MS>` (default 5s grace); widen the window if processing delays exceed the interval.

@@ -6,25 +6,40 @@
   <title>Local LLM Mail Screener</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #38bdf8;
+      --bg: #05070f;
+      --glass: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text: #e8ecf5;
+      --muted: #9aa3b5;
+      --accent: #41d6ff;
       --danger: #ef4444;
       --success: #22c55e;
       --warn: #f59e0b;
-      --card: #1f2937;
-      --border: #1f2937;
       --font: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.15), transparent 40%), var(--bg);
+      position: relative;
+      min-height: 100vh;
+      background: var(--bg);
       color: var(--text);
       font-family: var(--font);
       padding: 20px;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 80%, rgba(65, 214, 255, 0.25), transparent 40%),
+        radial-gradient(circle at 80% 20%, rgba(255, 0, 110, 0.15), transparent 40%),
+        radial-gradient(circle at 40% 40%, rgba(131, 56, 236, 0.18), transparent 45%),
+        radial-gradient(circle at 90% 90%, rgba(6, 255, 165, 0.18), transparent 35%);
+      filter: blur(90px);
+      z-index: 0;
+      pointer-events: none;
     }
     h1 { margin: 0 0 12px; letter-spacing: -0.02em; }
     .grid {
@@ -34,12 +49,17 @@
       margin-bottom: 16px;
     }
     .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
       padding: 14px 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      position: relative;
+      z-index: 1;
     }
+    .card + .card { margin-top: 14px; }
     .section-title {
       display: flex;
       align-items: center;
@@ -80,7 +100,7 @@
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-    .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+    .stat { background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 10px; padding: 10px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     .stat .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
     .stat .value { font-size: 22px; font-weight: 700; margin-top: 6px; }
     @media (max-width: 640px) {
