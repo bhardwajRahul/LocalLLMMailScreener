@@ -17,17 +17,18 @@
       --warn: #f59e0b;
       --font: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
     }
-    * { box-sizing: border-box; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      margin: 0;
-      position: relative;
       min-height: 100vh;
       background: var(--bg);
       color: var(--text);
       font-family: var(--font);
-      padding: 20px;
+      padding: 24px;
       overflow-x: hidden;
     }
+
     body::before {
       content: '';
       position: fixed;
@@ -41,114 +42,339 @@
       z-index: 0;
       pointer-events: none;
     }
-    h1 { margin: 0 0 12px; letter-spacing: -0.02em; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 14px;
-      margin-bottom: 16px;
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1600px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
+
+    h1 {
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+      font-weight: 700;
+    }
+
+    /* Health Cards Row */
+    .health-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
     .card {
       background: var(--glass);
       border: 1px solid var(--glass-border);
       border-radius: 14px;
-      padding: 14px 16px;
+      padding: 16px 20px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.35);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      position: relative;
-      z-index: 1;
     }
-    .card + .card { margin-top: 14px; }
-    .section-title {
+
+    .card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 8px;
-      font-weight: 600;
+      margin-bottom: 10px;
     }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
     .status {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
+      padding: 4px 12px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
-    .ok { background: rgba(34, 197, 94, 0.12); color: var(--success); }
-    .fail { background: rgba(239, 68, 68, 0.12); color: var(--danger); }
-    .warn { background: rgba(245, 158, 11, 0.12); color: var(--warn); }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
+
+    .ok { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .fail { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .warn { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
+
+    .card-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
     }
-    th, td {
-      text-align: left;
-      padding: 8px 6px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
+
+    /* Stats Section */
+    .stats-section .card-header {
+      margin-bottom: 14px;
     }
-    th { color: var(--muted); font-weight: 600; }
-    tr:hover { background: rgba(255,255,255,0.02); }
-    .muted { color: var(--muted); font-size: 12px; }
-    .pill { padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 11px; }
-    .pill.high { background: rgba(239,68,68,0.12); color: var(--danger); }
-    .pill.normal { background: rgba(56,189,248,0.12); color: var(--accent); }
+
+    .config-info {
+      color: var(--muted);
+      font-size: 11px;
+      font-family: monospace;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    /* Notifications Section */
+    .notifications-section .card-header {
+      margin-bottom: 16px;
+    }
+
+    .notifications-scroll {
+      max-height: 500px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .notifications-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .notifications-scroll::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.05);
+      border-radius: 3px;
+    }
+
+    .notifications-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.15);
+      border-radius: 3px;
+    }
+
+    .notifications-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .notifications-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 14px;
+    }
+
+    .notification-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .notification-card:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.15);
+    }
+
+    .notification-card.high {
+      border-left: 3px solid var(--danger);
+    }
+
+    .notification-card.normal {
+      border-left: 3px solid var(--accent);
+    }
+
+    .notification-card.low {
+      border-left: 3px solid var(--muted);
+    }
+
+    .notif-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .notif-subject {
+      font-weight: 600;
+      font-size: 14px;
+      line-height: 1.4;
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .pill {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+
+    .pill.high { background: rgba(239,68,68,0.15); color: var(--danger); }
+    .pill.normal { background: rgba(65,214,255,0.15); color: var(--accent); }
     .pill.low { background: rgba(148,163,184,0.2); color: var(--muted); }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-    .stat { background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 10px; padding: 10px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-    .stat .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
-    .stat .value { font-size: 22px; font-weight: 700; margin-top: 6px; }
+
+    .notif-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .notif-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .notif-meta-label {
+      opacity: 0.7;
+    }
+
+    .notif-preview {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+      opacity: 0.85;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .notif-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .notif-id {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: monospace;
+      opacity: 0.7;
+    }
+
+    .notif-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(65,214,255,0.1);
+      transition: background 0.2s ease;
+    }
+
+    .notif-link:hover {
+      background: rgba(65,214,255,0.2);
+      text-decoration: none;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .health-row {
+        grid-template-columns: 1fr;
+      }
+      .notifications-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (max-width: 640px) {
-      body { padding: 14px; }
-      table { font-size: 12px; }
+      body { padding: 16px; }
+      h1 { font-size: 1.4rem; }
+      .stat-value { font-size: 20px; }
+      .notifications-scroll { max-height: 400px; }
     }
   </style>
 </head>
 <body>
-  <h1>Local LLM Mail Screener</h1>
-  <div class="grid" id="health-cards"></div>
-  <div class="card">
-    <div class="section-title">
-      <span>Token & Activity</span>
-      <span class="muted" id="config"></span>
+  <div class="container">
+    <h1>Local LLM Mail Screener</h1>
+
+    <div class="health-row" id="health-cards"></div>
+
+    <div class="card stats-section">
+      <div class="card-header">
+        <span class="card-title">Token & Activity</span>
+        <span class="config-info" id="config"></span>
+      </div>
+      <div class="stats-grid" id="stats-grid"></div>
     </div>
-    <div class="stats-grid" id="stats-grid"></div>
-  </div>
-  <div class="card">
-    <div class="section-title">
-      <span>Recent Notifications</span>
-      <span class="muted">Latest first (max 50)</span>
-    </div>
-    <div style="overflow-x:auto;">
-      <table id="sends-table">
-        <thead>
-          <tr>
-            <th>Sent At</th><th>Provider</th><th>From</th><th>Subject</th><th>Urgency</th><th>Tokens</th><th>Notification ID</th><th>Preview</th><th>Gmail</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+
+    <div class="card notifications-section">
+      <div class="card-header">
+        <span class="card-title">Recent Notifications</span>
+        <span class="card-meta">Latest first · max 50</span>
+      </div>
+      <div class="notifications-scroll">
+        <div class="notifications-grid" id="notifications-grid"></div>
+      </div>
     </div>
   </div>
+
   <script>
     const healthCards = document.getElementById('health-cards');
     const statsGrid = document.getElementById('stats-grid');
-    const sendsBody = document.querySelector('#sends-table tbody');
+    const notificationsGrid = document.getElementById('notifications-grid');
     const configEl = document.getElementById('config');
 
     const fmtTime = (ts) => ts ? new Date(ts).toLocaleString() : '—';
+    
+    const fmtTimeShort = (ts) => {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      return d.toLocaleString(undefined, { 
+        month: 'short', day: 'numeric', 
+        hour: 'numeric', minute: '2-digit' 
+      });
+    };
+
     const statusBadge = (ok) => {
       const cls = ok ? 'ok' : 'fail';
       const label = ok ? 'OK' : 'FAIL';
       return `<span class="status ${cls}">${label}</span>`;
     };
 
-    const urgencyPill = (u) => `<span class="pill ${u || 'normal'}">${u || 'normal'}</span>`;
+    const urgencyPill = (u) => {
+      const level = u || 'normal';
+      return `<span class="pill ${level}">${level}</span>`;
+    };
 
     const renderHealth = (health) => {
       const items = [
@@ -156,26 +382,32 @@
         { key: 'llm', label: 'LLM' }
       ];
       if (health.notification) {
-        const svc = (health.notification.service || 'notification').toUpperCase();
+        const svc = health.notification.service || 'notification';
         items.push({ key: 'notification', label: `Notification (${svc})` });
       }
-      healthCards.innerHTML = items
-        .map((item) => {
-          const h = health[item.key] || {};
-          const ok = !!h.ok;
-          const detail = h.last_error ? `<div class="muted">Last error: ${h.last_error}</div>` : '';
-          const extra = item.key === 'llm' ? `<div class="muted">Avg latency: ${h.avg_latency_ms || 0} ms</div>` : '';
-          return `<div class="card">
-          <div class="section-title">
-            <span>${item.label}</span>
-            ${statusBadge(ok)}
+
+      healthCards.innerHTML = items.map((item) => {
+        const h = health[item.key] || {};
+        const ok = !!h.ok;
+        const errorLine = h.last_error 
+          ? `<div class="card-meta" style="margin-top:6px;color:var(--danger);">Error: ${h.last_error}</div>` 
+          : '';
+        const latencyLine = item.key === 'llm' && h.avg_latency_ms 
+          ? `<div class="card-meta">Avg latency: ${h.avg_latency_ms} ms</div>` 
+          : '';
+        
+        return `
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">${item.label}</span>
+              ${statusBadge(ok)}
+            </div>
+            <div class="card-meta">Last success: ${fmtTime(h.last_success_at)}</div>
+            ${latencyLine}
+            ${errorLine}
           </div>
-          <div class="muted">Last success: ${fmtTime(h.last_success_at)}</div>
-          ${extra}
-          ${detail}
-        </div>`;
-        })
-        .join('');
+        `;
+      }).join('');
     };
 
     const renderStats = (stats) => {
@@ -183,38 +415,77 @@
       const tps = stats.llm_tps || {};
       const items = [
         { label: 'Total Tokens (est)', value: stats.tokens_total_est || 0 },
-        { label: 'Tokens Last 24h (est)', value: stats.last_24h_tokens_est || 0 },
+        { label: 'Tokens 24h (est)', value: stats.last_24h_tokens_est || 0 },
         { label: 'Emails Processed', value: stats.emails_processed || 0 },
         { label: 'Notifications Sent', value: stats.notifications_sent || 0 },
         { label: 'LLM Requests', value: stats.llm_requests || 0 },
-        { label: 'LLM Queue Depth', value: `${queue.depth || 0} / ${queue.max_queue || 0}` },
-        { label: 'LLM Queue Dropped', value: queue.dropped_total || 0 },
-        { label: 'LLM TPS (avg last 5)', value: tps.avg_tps || 0 }
+        { label: 'Queue Depth', value: `${queue.depth || 0}/${queue.max_queue || 0}` },
+        { label: 'Queue Dropped', value: queue.dropped_total || 0 },
+        { label: 'TPS (avg 5)', value: tps.avg_tps || 0 }
       ];
-      statsGrid.innerHTML = items.map(i => `<div class="stat"><div class="label">${i.label}</div><div class="value">${i.value}</div></div>`).join('');
+
+      statsGrid.innerHTML = items.map(i => `
+        <div class="stat">
+          <div class="stat-label">${i.label}</div>
+          <div class="stat-value">${i.value}</div>
+        </div>
+      `).join('');
     };
 
-    const renderSends = (sends) => {
-      sendsBody.innerHTML = sends
-        .map(
-          (s) => `<tr>
-        <td>${fmtTime(s.sent_at)}</td>
-        <td>${(s.notification_provider || '').toUpperCase()}</td>
-        <td>${s.from || ''}</td>
-        <td>${s.subject || ''}</td>
-        <td>${urgencyPill(s.urgency)}</td>
-        <td>${s.tokens_for_email || 0}</td>
-        <td>${s.notification_id || s.twilio_sid || s.pushover_receipt || ''}</td>
-        <td>${(s.sms_preview || '').replace(/</g, '&lt;')}</td>
-        <td>${s.gmail_link ? `<a href="${s.gmail_link}" target="_blank">Open</a>` : ''}</td>
-      </tr>`
-        )
-        .join('');
+    const renderNotifications = (sends) => {
+      if (!sends || sends.length === 0) {
+        notificationsGrid.innerHTML = `
+          <div class="empty-state">No notifications yet</div>
+        `;
+        return;
+      }
+
+      notificationsGrid.innerHTML = sends.map((s) => {
+        const urgency = s.urgency || 'normal';
+        const notifId = s.notification_id || s.twilio_sid || s.pushover_receipt || '—';
+        const preview = (s.sms_preview || '').replace(/</g, '&lt;');
+        const gmailLink = s.gmail_link 
+          ? `<a href="${s.gmail_link}" target="_blank" class="notif-link">Open in Gmail</a>` 
+          : '';
+        const provider = s.notification_provider || 'notification';
+
+        return `
+          <div class="notification-card ${urgency}">
+            <div class="notif-header">
+              <div class="notif-subject">${s.subject || 'No subject'}</div>
+              ${urgencyPill(urgency)}
+            </div>
+            <div class="notif-meta">
+              <div class="notif-meta-item">
+                <span class="notif-meta-label">From:</span>
+                <span>${s.from || '—'}</span>
+              </div>
+              <div class="notif-meta-item">
+                <span class="notif-meta-label">Sent:</span>
+                <span>${fmtTimeShort(s.sent_at)}</span>
+              </div>
+              <div class="notif-meta-item">
+                <span class="notif-meta-label">Via:</span>
+                <span>${provider}</span>
+              </div>
+              <div class="notif-meta-item">
+                <span class="notif-meta-label">Tokens:</span>
+                <span>${s.tokens_for_email || 0}</span>
+              </div>
+            </div>
+            ${preview ? `<div class="notif-preview">${preview}</div>` : ''}
+            <div class="notif-footer">
+              <span class="notif-id">${notifId}</span>
+              ${gmailLink}
+            </div>
+          </div>
+        `;
+      }).join('');
     };
 
     const renderConfig = (cfg) => {
       const svc = cfg.notification_service || 'twilio';
-      configEl.textContent = `Polling ${cfg.poll_interval_ms}ms | LLM conc ${cfg.max_llm_concurrency} | Queue cap ${cfg.max_llm_queue} | Dry run ${cfg.dry_run} | Notify via ${svc}`;
+      configEl.textContent = `Poll ${cfg.poll_interval_ms}ms · Conc ${cfg.max_llm_concurrency} · Queue ${cfg.max_llm_queue} · Dry ${cfg.dry_run} · ${svc}`;
     };
 
     const refresh = async () => {
@@ -223,7 +494,7 @@
         const data = await res.json();
         renderHealth(data.health || {});
         renderStats(data.stats || {});
-        renderSends(data.recent_sends || []);
+        renderNotifications(data.recent_sends || []);
         if (data.config_sanitized) renderConfig(data.config_sanitized);
       } catch (e) {
         console.error('Status fetch failed', e);

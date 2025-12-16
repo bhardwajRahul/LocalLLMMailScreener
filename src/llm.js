@@ -18,6 +18,7 @@ If email needs my attention (action required, time-sensitive, direct question, s
 Security rules:
 - Routine camera motion for passing vehicles/animals is noise -> notify=false.
 - Notify=true for real alarms: siren, glass break, water/leak sensor, smoke/CO, door/window left open, abnormal/after-hours events (e.g., garage opens at 3am), or repeated/abnormal sensor behavior.
+- Family priority: always notify=true for school delays/closures, schedule changes, or events involving my children Mae or Effie (any mention of their names tied to school or activities).
 
 If notify=false, still provide a short title/body. Ensure JSON is valid and matches the schema exactly.`.trim();
 
