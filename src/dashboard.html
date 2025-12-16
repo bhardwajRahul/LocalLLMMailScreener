@@ -355,7 +355,7 @@
       return `<span class="pill ${level}">${level}</span>`;
     };
 
-    const renderHealth = (health) => {
+    const renderHealth = (health, cfg = {}) => {
       const items = [
         { key: 'gmail', label: 'Gmail' },
         { key: 'llm', label: 'LLM' }
@@ -374,6 +374,10 @@
         const latencyLine = item.key === 'llm' && h.avg_latency_ms 
           ? `<div class="card-meta">Avg latency: ${h.avg_latency_ms} ms</div>` 
           : '';
+        const modelLine =
+          item.key === 'llm' && cfg.llm_model
+            ? `<div class="card-meta">Model: ${cfg.llm_model}</div>`
+            : '';
         
         return `
           <div class="card">
@@ -383,6 +387,7 @@
             </div>
             <div class="card-meta">Last success: ${fmtTime(h.last_success_at)}</div>
             ${latencyLine}
+            ${modelLine}
             ${errorLine}
           </div>
         `;
@@ -466,10 +471,11 @@
       try {
         const res = await fetch('/api/status');
         const data = await res.json();
-        renderHealth(data.health || {});
+        const cfg = data.config_sanitized || {};
+        renderHealth(data.health || {}, cfg);
         renderStats(data.stats || {});
         renderNotifications(data.recent_sends || []);
-        if (data.config_sanitized) renderConfig(data.config_sanitized);
+        if (data.config_sanitized) renderConfig(cfg);
       } catch (e) {
         console.error('Status fetch failed', e);
       }
