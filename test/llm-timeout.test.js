@@ -37,6 +37,7 @@ test('handles LLM timeout gracefully', async () => {
       port: 0,
       statePath,
       llmTimeoutMs: 100,
+      notificationService: 'twilio',
       twilioFrom: '+10000000000',
       twilioTo: '+19999999999'
     },

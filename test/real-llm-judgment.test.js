@@ -1,6 +1,7 @@
 process.env.NO_AUTO_START = '1';
 process.env.NODE_ENV = 'test';
 
+import './real-flags.js';
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { startApp } from '../src/index.js';
@@ -51,7 +52,8 @@ const runCase = async (entry) => {
       statePath,
       pollIntervalMs: 1000,
       pollMaxResults: 5,
-      dryRun: true
+      dryRun: true,
+      notificationService: 'twilio'
     },
     gmailClient: mockGmail,
     twilioClient: twilioMock,

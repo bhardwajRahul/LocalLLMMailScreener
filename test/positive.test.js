@@ -39,6 +39,7 @@ test('processes emails and sends SMS when notify=true', async () => {
       pollIntervalMs: 1000,
       pollMaxResults: 10,
       llmTimeoutMs: 2000,
+      notificationService: 'twilio',
       twilioFrom: '+10000000000',
       twilioTo: '+19999999999'
     },

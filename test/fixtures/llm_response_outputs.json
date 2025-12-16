@@ -1,0 +1,140 @@
+[
+  {
+    "id": "plain_json",
+    "content_lines": [
+      "{\"notify\":true,\"message_packet\":{\"title\":\"Prod issue\",\"body\":\"Fix ASAP\",\"urgency\":\"high\"},\"confidence\":0.92,\"reason\":\"incident\"}"
+    ],
+    "expected": {
+      "notify": true,
+      "message_packet": { "title": "Prod issue", "body": "Fix ASAP", "urgency": "high" },
+      "confidence": 0.92,
+      "reason": "incident"
+    }
+  },
+  {
+    "id": "think_block",
+    "content_lines": [
+      "<think>",
+      "Analyzing fraud scenario",
+      "</think>",
+      "{\"notify\":true,\"message_packet\":{\"title\":\"Card alert\",\"body\":\"Suspicious charges detected\",\"urgency\":\"high\"},\"confidence\":0.88,\"reason\":\"possible fraud\"}"
+    ],
+    "expected": {
+      "notify": true,
+      "message_packet": {
+        "title": "Card alert",
+        "body": "Suspicious charges detected",
+        "urgency": "high"
+      },
+      "confidence": 0.88,
+      "reason": "possible fraud"
+    }
+  },
+  {
+    "id": "code_fence_json",
+    "content_lines": [
+      "Here is the structured result:",
+      "```json",
+      "{",
+      "  \"notify\": false,",
+      "  \"message_packet\": {\"title\": \"Newsletter\", \"body\": \"FYI only\", \"urgency\": \"low\"},",
+      "  \"confidence\": 0.31,",
+      "  \"reason\": \"marketing\"",
+      "}",
+      "```"
+    ],
+    "expected": {
+      "notify": false,
+      "message_packet": { "title": "Newsletter", "body": "FYI only", "urgency": "low" },
+      "confidence": 0.31,
+      "reason": "marketing"
+    }
+  },
+  {
+    "id": "analysis_final_block",
+    "content_lines": [
+      "analysis: urgent travel alert due to passport issue",
+      "final:",
+      "{\"notify\":true,\"message_packet\":{\"title\":\"Travel docs\",\"body\":\"Passport issue before flight\",\"urgency\":\"high\"},\"confidence\":0.74,\"reason\":\"travel docs\"}"
+    ],
+    "expected": {
+      "notify": true,
+      "message_packet": { "title": "Travel docs", "body": "Passport issue before flight", "urgency": "high" },
+      "confidence": 0.74,
+      "reason": "travel docs"
+    }
+  },
+  {
+    "id": "xml_wrapped",
+    "content_lines": [
+      "<response>",
+      "{\"notify\":false,\"message_packet\":{\"title\":\"Receipt\",\"body\":\"No action needed\",\"urgency\":\"low\"},\"confidence\":0.55,\"reason\":\"receipt\"}",
+      "</response>"
+    ],
+    "expected": {
+      "notify": false,
+      "message_packet": { "title": "Receipt", "body": "No action needed", "urgency": "low" },
+      "confidence": 0.55,
+      "reason": "receipt"
+    }
+  },
+  {
+    "id": "preface_then_json",
+    "content_lines": [
+      "Sure, here is the JSON you asked for:",
+      "{\"notify\":true,\"message_packet\":{\"title\":\"Interview\",\"body\":\"Confirm availability\",\"urgency\":\"normal\"},\"confidence\":0.63,\"reason\":\"scheduling\"}"
+    ],
+    "expected": {
+      "notify": true,
+      "message_packet": { "title": "Interview", "body": "Confirm availability", "urgency": "normal" },
+      "confidence": 0.63,
+      "reason": "scheduling"
+    }
+  },
+  {
+    "id": "double_json_pick_last",
+    "content_lines": [
+      "<think>{\"notify\":false,\"message_packet\":{\"title\":\"draft\",\"body\":\"ignore\",\"urgency\":\"low\"},\"confidence\":0.1,\"reason\":\"internal\"}</think>",
+      "Real answer:",
+      "{\"notify\":true,\"message_packet\":{\"title\":\"Production alert\",\"body\":\"Disk space critical\",\"urgency\":\"high\"},\"confidence\":0.97,\"reason\":\"critical alert\"}"
+    ],
+    "expected": {
+      "notify": true,
+      "message_packet": { "title": "Production alert", "body": "Disk space critical", "urgency": "high" },
+      "confidence": 0.97,
+      "reason": "critical alert"
+    }
+  },
+  {
+    "id": "json_then_trailing_text",
+    "content_lines": [
+      "{\"notify\":false,\"message_packet\":{\"title\":\"Update\",\"body\":\"Status only\",\"urgency\":\"low\"},\"confidence\":0.42,\"reason\":\"status\"}",
+      "Let me know if you need anything else."
+    ],
+    "expected": {
+      "notify": false,
+      "message_packet": { "title": "Update", "body": "Status only", "urgency": "low" },
+      "confidence": 0.42,
+      "reason": "status"
+    }
+  },
+  {
+    "id": "code_fence_no_language",
+    "content_lines": [
+      "```",
+      "{\"notify\":true,\"message_packet\":{\"title\":\"Server down\",\"body\":\"API unreachable\",\"urgency\":\"high\"},\"confidence\":0.85,\"reason\":\"downtime\"}",
+      "```"
+    ],
+    "expected": {
+      "notify": true,
+      "message_packet": { "title": "Server down", "body": "API unreachable", "urgency": "high" },
+      "confidence": 0.85,
+      "reason": "downtime"
+    }
+  },
+  {
+    "id": "no_json_error",
+    "content_lines": ["I cannot provide that output right now."],
+    "shouldError": true
+  }
+]

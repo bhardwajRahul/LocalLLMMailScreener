@@ -37,6 +37,7 @@ test('marks processed and records error on invalid JSON from LLM', async () => {
       port: 0,
       statePath,
       llmTimeoutMs: 1000,
+      notificationService: 'twilio',
       twilioFrom: '+10000000000',
       twilioTo: '+19999999999'
     },

@@ -1,6 +1,6 @@
 ## Local LLM Mail Screener
 
-Node.js (ESM) service that polls Gmail, sends each new email to a local OpenAI-compatible LLM, and optionally forwards summarized notifications based on the LLMs assessment of importance via Twilio SMS. Includes a lightweight dashboard and JSON status API.
+Node.js (ESM) service that polls Gmail, sends each new email to a local OpenAI-compatible LLM, and optionally forwards summarized notifications based on the LLMs assessment of importance via Twilio SMS or Pushover (emergency mode). Includes a lightweight dashboard and JSON status API.
 
 ---
 
@@ -62,10 +62,10 @@ Node.js (ESM) service that polls Gmail, sends each new email to a local OpenAI-c
 
                     EXTERNAL SERVICES
 ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────┐
-│   Gmail API       │  │  Local LLM        │  │   Twilio API      │
-│   (googleapis)    │  │  (OpenAI compat)  │  │                   │
-│                   │  │                   │  │                   │
-│  users.messages   │  │ /v1/chat/         │  │  messages.create  │
+│   Gmail API       │  │  Local LLM        │  │   Notifier API    │
+│   (googleapis)    │  │  (OpenAI compat)  │  │  Twilio or        │
+│                   │  │                   │  │  Pushover         │
+│  users.messages   │  │ /v1/chat/         │  │                   │
 │  .list / .get     │  │   completions     │  │                   │
 └───────────────────┘  └───────────────────┘  └───────────────────┘
 ```
@@ -218,17 +218,21 @@ LEGEND:
 
 ### Environment
 - `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` (OAuth2, userId=`me`)
-- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `TWILIO_TO`
-- Optional knobs: `PORT`, `POLL_INTERVAL_MS`, `POLL_MAX_RESULTS`, `GMAIL_QUERY`, `STATE_PATH`, `MAX_PROCESSED_IDS`, `RECENT_LIMIT`, `MAX_SMS_CHARS`, `MAX_EMAIL_BODY_CHARS`, `MAX_CONCURRENCY`, `DRY_RUN`, `LLM_*` (base URL/model/temperature/timeouts)
+- Notification:
+  - `NOTIFICATION_SERVICE` (`twilio` | `pushover`, default `twilio`)
+  - Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `TWILIO_TO`
+  - Pushover (emergency priority=2): `PUSHOVER_TOKEN` (or `PUSHOVER_API_TOKEN`), `PUSHOVER_USER`, optional `PUSHOVER_DEVICE`
+- Optional knobs: `PORT`, `POLL_INTERVAL_MS`, `POLL_GRACE_MS` (default 5000ms overlap to avoid gaps), `POLL_WINDOW_MS` (override window size; defaults to `POLL_INTERVAL_MS`), `POLL_MAX_RESULTS`, `GMAIL_QUERY`, `STATE_PATH`, `MAX_PROCESSED_IDS`, `RECENT_LIMIT`, `MAX_SMS_CHARS`, `MAX_EMAIL_BODY_CHARS`, `MAX_CONCURRENCY`, `DRY_RUN`, `LLM_*` (base URL/model/temperature/timeouts)
 
 ### Behavior
-- Polls Gmail inbox on the configured interval; builds the Gmail query from `GMAIL_QUERY` (defaults to `newer_than:1d`) and automatically adds `after:<last_poll_at>` so we only pull mail newer than the last poll window.
-- When `TEST_REAL_GMAIL=1`, the poll fetch is capped at 3 messages to keep integration runs light.
+- Polls Gmail inbox on the configured interval; each poll (including the first) uses `after:<now - POLL_INTERVAL_MS - POLL_GRACE_MS>` to only pull mail from the most recent interval with a small 5s overlap to avoid missing messages between timers. If no emails arrived in that window, nothing is processed until the next interval.
 - Emails are normalized and trimmed before LLM use (reply chains/forwards and footer noise removed, attachments kept as metadata only, body capped to `MAX_EMAIL_BODY_CHARS`, default 4000, with head+tail preserved).
 - Every new email is sent to the local LLM (`/v1/chat/completions`), enforcing strict JSON output.
-- If `notify=true`, sends SMS via Twilio (or skips when `DRY_RUN=true`) with truncation to `MAX_SMS_CHARS`.
+- If `notify=true`, sends via the configured notification service:
+  - Twilio SMS (truncated to `MAX_SMS_CHARS`, or skipped when `DRY_RUN=true`).
+  - Pushover emergency mode (priority=2) with `retry=100`, `expire=7d`, using the same truncated body.
 - State (processed IDs, decisions, sends, token stats) persists to `STATE_PATH` atomically.
-- Dashboard shows Gmail/LLM/Twilio health, token estimates (total + last 24h), and recent SMS sends.
+- Dashboard shows Gmail/LLM/Notification health, token estimates (total + last 24h), and recent notifications.
 
 ### Endpoints
 - `GET /` — dashboard UI
@@ -237,7 +241,7 @@ LEGEND:
 ### Notes
 - Uses concurrency limiting on email processing to avoid overloading the LLM.
 - Token estimation uses `usage.total_tokens` when present, otherwise `(input_chars + output_chars)/4` (ceil).
-- Health rules: Gmail = success within 2× poll interval; LLM = success within 5 min or recent health check; Twilio = success within 24h or startup credential check.
+- Health rules: Gmail = success within 2× poll interval; LLM = success within 5 min or recent health check; Notification (Twilio/Pushover) = success within 24h or startup credential check.
 
 ### Testing
 - `npm test` runs mocked scenarios (no external calls) plus parser checks:
@@ -247,6 +251,8 @@ LEGEND:
 - Optional integration toggles (skipped unless enabled):
   - `TEST_REAL_LLM=1 npm test` → real LLM, mocked Gmail/Twilio
   - `TEST_REAL_LLM=1 TEST_REAL_GMAIL=1 npm test` → real Gmail+LLM, mocked Twilio (requires Gmail creds set)
-  - Tests never use real Twilio to avoid live SMS; keep `TEST_REAL_TWILIO` unset.
+  - `TEST_REAL_TWILIO=1 npm test` → real Twilio single-message smoke (uses `.env` creds)
+  - `TEST_REAL_PUSHOVER=1 npm test` → real Pushover emergency-mode single-message smoke (uses `.env` creds: `PUSHOVER_TOKEN` or `PUSHOVER_API_TOKEN`, plus `PUSHOVER_USER`)
+  - Shorthand: `REAL=GLPT npm test` sets `TEST_REAL_GMAIL/LLM/PUSHOVER/TWILIO` based on letters (any order, case-insensitive).
 - LLM debug logging during real-LLM test: add `TEST_LLM_DEBUG=1 npm test` to print request IDs, latency, tokens, and raw content from the local LLM in the real-LLM scenario.
 - Real LLM judgment checks (skipped unless `TEST_REAL_LLM=1`): per-email tests named after the subject, using controlled urgent/non-urgent mocks from `test/fixtures/llm_judgment_cases.json` + raw `.eml` files.

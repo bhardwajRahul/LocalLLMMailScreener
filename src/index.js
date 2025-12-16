@@ -10,15 +10,16 @@ import { createGmailClient, listMessages, fetchRawMessage, parseRawEmail, gmailL
 import { callLLM, healthCheckLLM } from './llm.js';
 import { trimEmailForLLM } from './email_trim.js';
 import { createTwilioClient, sendSms, checkTwilioCredentials } from './twilio.js';
+import { sendPushover, checkPushoverCredentials } from './pushover.js';
 import { createStateManager } from './state.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const log = (...args) => console.log(new Date().toISOString(), ...args);
 
-const buildGmailQuery = (baseQuery, lastPollAtMs) => {
+const buildGmailQuery = (baseQuery, afterMs) => {
   const trimmed = (baseQuery || '').trim();
   const query = trimmed.length ? trimmed : 'newer_than:1d';
-  const afterSeconds = lastPollAtMs ? Math.floor(lastPollAtMs / 1000) : 0;
+  const afterSeconds = afterMs ? Math.floor(afterMs / 1000) : 0;
   if (afterSeconds) {
     return `${query} after:${afterSeconds}`;
   }
@@ -28,6 +29,8 @@ const buildGmailQuery = (baseQuery, lastPollAtMs) => {
 export const buildConfig = (env = process.env) => ({
   port: parseInt(env.PORT || '3000', 10),
   pollIntervalMs: parseInt(env.POLL_INTERVAL_MS || '15000', 10),
+  pollGraceMs: parseInt(env.POLL_GRACE_MS || '5000', 10),
+  pollWindowMs: env.POLL_WINDOW_MS ? parseInt(env.POLL_WINDOW_MS, 10) : null,
   pollMaxResults: parseInt(env.POLL_MAX_RESULTS || '25', 10),
   gmailQuery: env.GMAIL_QUERY || 'newer_than:1d',
   statePath: env.STATE_PATH || './data/state.json',
@@ -42,6 +45,7 @@ export const buildConfig = (env = process.env) => ({
   llmTimeoutMs: parseInt(env.LLM_TIMEOUT_MS || '120000', 10),
   maxEmailBodyChars: parseInt(env.MAX_EMAIL_BODY_CHARS || '4000', 10),
   dryRun: (env.DRY_RUN || 'false').toLowerCase() === 'true',
+  notificationService: (env.NOTIFICATION_SERVICE || 'twilio').toLowerCase(),
   llmApiKey: env.LLM_API_KEY || '',
   gmailClientId: env.GMAIL_CLIENT_ID,
   gmailClientSecret: env.GMAIL_CLIENT_SECRET,
@@ -49,7 +53,10 @@ export const buildConfig = (env = process.env) => ({
   twilioAccountSid: env.TWILIO_ACCOUNT_SID,
   twilioAuthToken: env.TWILIO_AUTH_TOKEN,
   twilioFrom: env.TWILIO_FROM,
-  twilioTo: env.TWILIO_TO
+  twilioTo: env.TWILIO_TO,
+  pushoverToken: env.PUSHOVER_TOKEN || env.PUSHOVER_API_TOKEN,
+  pushoverUser: env.PUSHOVER_USER,
+  pushoverDevice: env.PUSHOVER_DEVICE
 });
 
 const createLimiter = (maxConcurrency) => {
@@ -170,8 +177,8 @@ const processSingleMessage = async (ctx, messageMeta, state) => {
     }
   }
 
-  ctx.stateManager.addDecision(decision);
-  const shouldNotify = !!decision.notify;
+    ctx.stateManager.addDecision(decision);
+    const shouldNotify = !!decision.notify;
 
     if (shouldNotify) {
       const packet = decision.message_packet || {};
@@ -179,28 +186,68 @@ const processSingleMessage = async (ctx, messageMeta, state) => {
       if (packet.urgency) smsBody += ` [${packet.urgency}]`;
       if (packet.body) smsBody += `\n${packet.body}`;
       const truncated = smsBody.slice(0, ctx.config.maxSmsChars);
-      try {
-        const sendResult = await sendSms({
-          client: ctx.twilioClient,
-          to: ctx.config.twilioTo,
-          from: ctx.config.twilioFrom,
-          body: truncated,
-          dryRun: ctx.config.dryRun
-        });
-        ctx.stateManager.setTwilioOk();
-        ctx.stateManager.addSend({
-          sent_at: Date.now(),
-          from: parsed.from,
-          subject: parsed.subject,
-          urgency: packet.urgency || 'normal',
-          tokens_for_email: tokenCountFromDecision(decision),
-          twilio_sid: sendResult.sid,
-          sms_preview: truncated,
-          gmail_link: gmailLink
-        });
-      } catch (err) {
-        ctx.stateManager.setTwilioError(err.message);
-        log('Twilio send failed', err.message);
+      const service = ctx.config.notificationService;
+      if (service === 'twilio') {
+        try {
+          const sendResult = await sendSms({
+            client: ctx.twilioClient,
+            to: ctx.config.twilioTo,
+            from: ctx.config.twilioFrom,
+            body: truncated,
+            dryRun: ctx.config.dryRun
+          });
+          ctx.stateManager.setTwilioOk();
+          ctx.stateManager.addSend({
+            sent_at: Date.now(),
+            from: parsed.from,
+            subject: parsed.subject,
+            urgency: packet.urgency || 'normal',
+            tokens_for_email: tokenCountFromDecision(decision),
+            twilio_sid: sendResult.sid,
+            notification_provider: 'twilio',
+            notification_id: sendResult.sid,
+            sms_preview: truncated,
+            gmail_link: gmailLink
+          });
+        } catch (err) {
+          ctx.stateManager.setTwilioError(err.message);
+          log('Twilio send failed', err.message);
+        }
+      } else if (service === 'pushover') {
+        try {
+          const sendResult = await ctx.pushoverSender({
+            token: ctx.config.pushoverToken,
+            user: ctx.config.pushoverUser,
+            device: ctx.config.pushoverDevice,
+            title: packet.title || 'New mail',
+            message: truncated,
+            priority: 2,
+            retry: 100,
+            expire: 7 * 24 * 60 * 60,
+            dryRun: ctx.config.dryRun
+          });
+          ctx.stateManager.setPushoverOk();
+          ctx.stateManager.addSend({
+            sent_at: Date.now(),
+            from: parsed.from,
+            subject: parsed.subject,
+            urgency: packet.urgency || 'normal',
+            tokens_for_email: tokenCountFromDecision(decision),
+            pushover_receipt: sendResult.receipt,
+            notification_provider: 'pushover',
+            notification_id: sendResult.receipt,
+            sms_preview: truncated,
+            gmail_link: gmailLink
+          });
+        } catch (err) {
+          ctx.stateManager.setPushoverError(err.message);
+          log('Pushover send failed', err.message);
+        }
+      } else {
+        const msg = `Notification service not recognized: ${service}`;
+        ctx.stateManager.setTwilioError(msg);
+        ctx.stateManager.setPushoverError(msg);
+        log(msg);
       }
     }
 
@@ -219,12 +266,15 @@ const pollGmail = async (ctx) => {
   if (ctx.pollLock) return;
   ctx.pollLock = true;
   const state = ctx.stateManager.getState();
-  const lastPollAt = state.stats.gmail.last_poll_at || 0;
-  const effectiveQuery = buildGmailQuery(ctx.config.gmailQuery, lastPollAt);
+  const previousPollAt = state.stats.gmail.last_poll_at || 0;
+  const now = Date.now();
+  const windowMs = ctx.config.pollWindowMs ?? ctx.config.pollIntervalMs;
+  const graceMs = Math.max(ctx.config.pollGraceMs || 0, 0);
+  const windowStartMs = windowMs > 0 ? Math.max(0, now - windowMs - graceMs) : 0;
+  const effectiveQuery = buildGmailQuery(ctx.config.gmailQuery, windowStartMs);
   ctx.stateManager.recordGmailPoll();
   try {
-    const effectiveMaxResults =
-      process.env.TEST_REAL_GMAIL === '1' ? Math.min(ctx.config.pollMaxResults, 3) : ctx.config.pollMaxResults;
+    const effectiveMaxResults = ctx.config.pollMaxResults;
     const messages = await listMessages(ctx.gmailClient, {
       maxResults: effectiveMaxResults,
       query: effectiveQuery
@@ -237,7 +287,7 @@ const pollGmail = async (ctx) => {
     const tasks = newMessages.map((m) => ctx.limiter(() => processSingleMessage(ctx, m, state)));
     await Promise.allSettled(tasks);
   } catch (err) {
-    ctx.stateManager.revertGmailPoll(lastPollAt);
+    ctx.stateManager.revertGmailPoll(previousPollAt);
     ctx.stateManager.setGmailError(err.message);
     log('Gmail poll failed', err.message);
   } finally {
@@ -289,15 +339,38 @@ const twilioStartupCheck = async (ctx) => {
   await ctx.stateManager.save();
 };
 
+const pushoverStartupCheck = async (ctx) => {
+  const res = await ctx.pushoverValidator({
+    token: ctx.config.pushoverToken,
+    user: ctx.config.pushoverUser,
+    device: ctx.config.pushoverDevice
+  });
+  if (res.ok) {
+    ctx.stateManager.setPushoverOk();
+  } else {
+    ctx.stateManager.setPushoverError(res.error || 'Pushover check failed');
+  }
+  await ctx.stateManager.save();
+};
+
 const buildHealth = (ctx, stats) => {
   const now = Date.now();
   const gmailOk =
     stats.gmail.last_ok_at > 0 && now - stats.gmail.last_ok_at <= ctx.config.pollIntervalMs * 2 && !stats.gmail.last_error;
   const llmRecent = stats.llm.last_ok_at > 0 && now - stats.llm.last_ok_at <= 5 * 60 * 1000;
   const llmOk = (llmRecent || stats.llm.last_health_check_at) && !stats.llm.last_error;
+
   const twilioRecent = stats.twilio.last_ok_at > 0 && now - stats.twilio.last_ok_at <= 24 * 60 * 60 * 1000;
   const twilioOk = (twilioRecent || stats.twilio.startup_ok_at) && !stats.twilio.last_error;
-  return {
+  const pushoverRecent =
+    stats.pushover.last_ok_at > 0 && now - stats.pushover.last_ok_at <= 24 * 60 * 60 * 1000;
+  const pushoverOk = (pushoverRecent || stats.pushover.startup_ok_at) && !stats.pushover.last_error;
+
+  const notificationService = ctx.config.notificationService;
+  const notificationStats = notificationService === 'pushover' ? stats.pushover : stats.twilio;
+  const notificationOk = notificationService === 'pushover' ? pushoverOk : twilioOk;
+
+  const health = {
     gmail: {
       ok: gmailOk,
       last_success_at: stats.gmail.last_ok_at,
@@ -311,12 +384,21 @@ const buildHealth = (ctx, stats) => {
       avg_latency_ms: stats.llm.avg_latency_ms,
       last_latency_ms: stats.llm.last_latency_ms
     },
-    twilio: {
-      ok: twilioOk,
-      last_success_at: stats.twilio.last_ok_at || stats.twilio.startup_ok_at,
-      last_error: stats.twilio.last_error
+    notification: {
+      service: notificationService,
+      ok: notificationOk,
+      last_success_at: notificationStats.last_ok_at || notificationStats.startup_ok_at,
+      last_error: notificationStats.last_error
     }
   };
+
+  if (notificationService === 'twilio') {
+    health.twilio = health.notification;
+  } else if (notificationService === 'pushover') {
+    health.pushover = health.notification;
+  }
+
+  return health;
 };
 
 const buildStatusSnapshot = (ctx) => {
@@ -331,11 +413,14 @@ const buildStatusSnapshot = (ctx) => {
     config_sanitized: {
       poll_interval_ms: ctx.config.pollIntervalMs,
       poll_max_results: ctx.config.pollMaxResults,
+      poll_grace_ms: ctx.config.pollGraceMs,
+      poll_window_ms: ctx.config.pollWindowMs ?? ctx.config.pollIntervalMs,
       gmail_query: ctx.config.gmailQuery,
       max_sms_chars: ctx.config.maxSmsChars,
       max_email_body_chars: ctx.config.maxEmailBodyChars,
       max_concurrency: ctx.config.maxConcurrency,
       dry_run: ctx.config.dryRun,
+      notification_service: ctx.config.notificationService,
       llm_base_url: ctx.config.llmBaseUrl,
       llm_model: ctx.config.llmModel
     }
@@ -380,6 +465,9 @@ export const startApp = async (overrides = {}) => {
       authToken: config.twilioAuthToken
     });
 
+  const pushoverSender = overrides.pushoverSender || sendPushover;
+  const pushoverValidator = overrides.pushoverValidator || checkPushoverCredentials;
+
   const stateManager =
     overrides.stateManager ||
     createStateManager({
@@ -394,6 +482,8 @@ export const startApp = async (overrides = {}) => {
     config,
     gmailClient,
     twilioClient,
+    pushoverSender,
+    pushoverValidator,
     stateManager,
     limiter,
     callLLM: overrides.llmCaller || callLLM,
@@ -406,8 +496,15 @@ export const startApp = async (overrides = {}) => {
   await ensureStateDir(config.statePath);
   await stateManager.load();
 
-  if (!overrides.skipTwilioStartupCheck) {
+  if (!overrides.skipTwilioStartupCheck && config.notificationService === 'twilio') {
     await twilioStartupCheck(ctx);
+  } else if (!overrides.skipTwilioStartupCheck && config.notificationService === 'pushover') {
+    await pushoverStartupCheck(ctx);
+  } else if (!overrides.skipTwilioStartupCheck) {
+    const msg = `Notification service not recognized: ${config.notificationService}`;
+    ctx.stateManager.setTwilioError(msg);
+    ctx.stateManager.setPushoverError(msg);
+    await ctx.stateManager.save();
   }
 
   let app = null;

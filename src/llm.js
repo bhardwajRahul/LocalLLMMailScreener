@@ -30,6 +30,42 @@ MAX_SMS_CHARS value: ${maxSmsChars}
 Return ONLY the JSON result following the schema.`;
 };
 
+const stripLeadingThinkBlock = (content) => content.replace(/^<think>[\s\S]*?<\/think>\s*/i, '').trim();
+
+export const parseLLMJson = (content) => {
+  if (!content || typeof content !== 'string') {
+    throw new Error('Invalid JSON from LLM: empty response');
+  }
+
+  const candidates = [];
+  const seen = new Set();
+  const addCandidate = (value) => {
+    const trimmed = (value || '').trim();
+    if (!trimmed || seen.has(trimmed)) return;
+    seen.add(trimmed);
+    candidates.push(trimmed);
+  };
+
+  addCandidate(content);
+  const withoutThink = stripLeadingThinkBlock(content);
+  addCandidate(withoutThink);
+
+  const jsonSnippets = withoutThink.match(/{[\s\S]*}/g) || [];
+  for (let i = jsonSnippets.length - 1; i >= 0; i -= 1) {
+    addCandidate(jsonSnippets[i]);
+  }
+
+  let firstError;
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (err) {
+      if (!firstError) firstError = err;
+    }
+  }
+  throw new Error(`Invalid JSON from LLM: ${firstError ? firstError.message : 'no JSON object found'}`);
+};
+
 export const callLLM = async ({
   llmBaseUrl,
   apiKey,
@@ -65,12 +101,7 @@ export const callLLM = async ({
     throw new Error('LLM response missing content');
   }
   const content = choice.message.content.trim();
-  let parsed;
-  try {
-    parsed = JSON.parse(content);
-  } catch (err) {
-    throw new Error(`Invalid JSON from LLM: ${err.message}`);
-  }
+  const parsed = parseLLMJson(content);
 
   const usage = response.data?.usage;
   const inputChars = JSON.stringify(payload)?.length || 0;

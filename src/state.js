@@ -14,7 +14,8 @@ const defaultState = () => ({
     last_24h_tokens_est: 0,
     gmail: { last_ok_at: 0, last_error: '', last_poll_at: 0 },
     llm: { last_ok_at: 0, last_error: '', last_latency_ms: 0, avg_latency_ms: 0, last_health_check_at: 0 },
-    twilio: { last_ok_at: 0, last_error: '', startup_ok_at: 0 }
+    twilio: { last_ok_at: 0, last_error: '', startup_ok_at: 0 },
+    pushover: { last_ok_at: 0, last_error: '', startup_ok_at: 0 }
   }
 });
 
@@ -37,7 +38,12 @@ export const createStateManager = ({
     try {
       const raw = await fs.promises.readFile(statePath, 'utf8');
       const parsed = JSON.parse(raw);
-      state = { ...defaultState(), ...parsed };
+      const base = defaultState();
+      state = {
+        ...base,
+        ...parsed,
+        stats: { ...base.stats, ...(parsed.stats || {}) }
+      };
       computeLast24h();
     } catch (err) {
       state = defaultState();
@@ -147,6 +153,17 @@ export const createStateManager = ({
     state.stats.twilio.last_error = errMsg;
   };
 
+  const setPushoverOk = () => {
+    const now = Date.now();
+    state.stats.pushover.last_ok_at = now;
+    state.stats.pushover.startup_ok_at ||= now;
+    state.stats.pushover.last_error = '';
+  };
+
+  const setPushoverError = (errMsg) => {
+    state.stats.pushover.last_error = errMsg;
+  };
+
   const getState = () => state;
 
   return {
@@ -166,6 +183,8 @@ export const createStateManager = ({
     setLLMError,
     setLLMHealthCheck,
     setTwilioOk,
-    setTwilioError
+    setTwilioError,
+    setPushoverOk,
+    setPushoverError
   };
 };

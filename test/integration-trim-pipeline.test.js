@@ -59,7 +59,7 @@ test('llm receives trimmed email from gmail pipeline', async () => {
   };
 
   const appRunner = await startApp({
-    configOverrides: { port: 0, statePath, pollIntervalMs: 1000, dryRun: true },
+    configOverrides: { port: 0, statePath, pollIntervalMs: 1000, dryRun: true, notificationService: 'twilio' },
     gmailClient: gmailMock,
     twilioClient: twilioMock,
     llmCaller,

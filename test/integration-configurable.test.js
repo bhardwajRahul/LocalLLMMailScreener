@@ -1,6 +1,7 @@
 process.env.NO_AUTO_START = '1';
 process.env.NODE_ENV = 'test';
 
+import './real-flags.js';
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { startApp } from '../src/index.js';
@@ -34,10 +35,11 @@ test(
       configOverrides: {
         port: 0,
         statePath,
-      pollIntervalMs: 2000,
-      pollMaxResults: 5,
-      dryRun: true
-    },
+        pollIntervalMs: 2000,
+        pollMaxResults: 5,
+        dryRun: true,
+        notificationService: 'twilio'
+      },
     gmailClient: mockGmail,
     twilioClient: twilioMock,
     // Use real LLM; optionally log
@@ -75,7 +77,7 @@ test(
 );
 
 test(
-  'real Gmail + real LLM with mocked Twilio',
+  'real Gmail + real LLM (exactly 3 most recent, window disabled) with mocked Twilio',
   { skip: !(useRealLLM && useRealGmail && hasGmailCreds) },
   async () => {
     realTwilioWarn();
@@ -86,8 +88,10 @@ test(
         port: 0,
         statePath,
         pollIntervalMs: 2000,
-        pollMaxResults: 5,
-        dryRun: true // extra guard; Twilio still mocked
+        pollWindowMs: 0, // fetch most recent regardless of interval window
+        pollMaxResults: 3,
+        dryRun: true, // extra guard; Twilio still mocked
+        notificationService: 'twilio'
       },
       // Use real Gmail client and LLM caller (default)
       twilioClient: twilioMock,
@@ -108,16 +112,25 @@ test(
       const stats = state.stats;
       const decisions = state.recent_decisions || [];
       const processedCount = Object.keys(state.processed || {}).length;
-      const cappedDecisions = decisions.slice(-3); // only expect up to 3 pulled
+      const cappedDecisions = decisions.slice(-3); // capped to the three most recent
 
+      assert.ok(
+        state.stats.gmail.last_poll_at > 0 && state.stats.gmail.last_ok_at > 0,
+        'Gmail poll should have executed successfully'
+      );
       assert.strictEqual(
         cappedDecisions.length,
         processedCount,
         `should have one decision per processed email (got decisions=${cappedDecisions.length}, processed=${processedCount})`
       );
       assert.ok(
-        cappedDecisions.length <= 3,
-        `should not exceed 3 decisions when TEST_REAL_GMAIL=1 (got ${cappedDecisions.length})`
+        processedCount === 3,
+        `should process exactly three most recent emails (got ${processedCount})`
+      );
+      assert.strictEqual(
+        cappedDecisions.length,
+        3,
+        `should have three LLM decisions corresponding to the three fetched emails (got ${cappedDecisions.length})`
       );
       for (const decision of cappedDecisions) {
         assert.strictEqual(

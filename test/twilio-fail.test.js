@@ -37,6 +37,7 @@ test('handles Twilio send failure gracefully', async () => {
       port: 0,
       statePath,
       llmTimeoutMs: 1000,
+      notificationService: 'twilio',
       twilioFrom: '+10000000000',
       twilioTo: '+19999999999'
     },
