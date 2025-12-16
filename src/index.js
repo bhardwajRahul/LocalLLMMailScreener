@@ -237,6 +237,7 @@ const pollGmail = async (ctx) => {
     const tasks = newMessages.map((m) => ctx.limiter(() => processSingleMessage(ctx, m, state)));
     await Promise.allSettled(tasks);
   } catch (err) {
+    ctx.stateManager.revertGmailPoll(lastPollAt);
     ctx.stateManager.setGmailError(err.message);
     log('Gmail poll failed', err.message);
   } finally {

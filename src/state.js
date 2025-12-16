@@ -101,6 +101,10 @@ export const createStateManager = ({
     state.stats.gmail.last_poll_at = Date.now();
   };
 
+  const revertGmailPoll = (previousTimestamp) => {
+    state.stats.gmail.last_poll_at = previousTimestamp;
+  };
+
   const setGmailOk = () => {
     state.stats.gmail.last_ok_at = Date.now();
     state.stats.gmail.last_error = '';
@@ -155,6 +159,7 @@ export const createStateManager = ({
     addTokenEvent,
     bumpLLMRequests,
     recordGmailPoll,
+    revertGmailPoll,
     setGmailOk,
     setGmailError,
     setLLMOk,
