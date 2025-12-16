@@ -43,6 +43,7 @@ export const buildConfig = (env = process.env) => ({
   pollIntervalMs: parseInt(env.POLL_INTERVAL_MS || '15000', 10),
   pollGraceMs: parseInt(env.POLL_GRACE_MS || '5000', 10),
   pollWindowMs: env.POLL_WINDOW_MS ? parseInt(env.POLL_WINDOW_MS, 10) : null,
+  gmailSummaryIntervalMin: parseInt(env.GMAIL_SUMMARY_INTERVAL_MIN || '15', 10),
   pollMaxResults: parseInt(env.POLL_MAX_RESULTS || '25', 10),
   gmailQuery: env.GMAIL_QUERY || 'newer_than:1d',
   statePath: env.STATE_PATH || './data/state.json',
@@ -72,6 +73,53 @@ export const buildConfig = (env = process.env) => ({
   pushoverUser: env.PUSHOVER_USER,
   pushoverDevice: env.PUSHOVER_DEVICE
 });
+
+const createGmailSummaryTracker = (intervalMinRaw) => {
+  const intervalMin = Math.max(0, Math.floor(Number.isFinite(intervalMinRaw) ? intervalMinRaw : 15));
+  const intervalMs = intervalMin > 0 ? intervalMin * 60 * 1000 : 0;
+  return {
+    intervalMin,
+    intervalMs,
+    windowStart: null,
+    pollOk: 0,
+    pollBad: 0,
+    newMail: 0
+  };
+};
+
+const resetGmailSummaryWindow = (tracker, now) => {
+  tracker.windowStart = now;
+  tracker.pollOk = 0;
+  tracker.pollBad = 0;
+  tracker.newMail = 0;
+};
+
+const logGmailSummary = (ctx) => {
+  const tracker = ctx.gmailSummary;
+  if (!tracker) return;
+  const metrics = [`poll_ok:${tracker.pollOk}`, `poll_bad:${tracker.pollBad}`, `new_mail:${tracker.newMail}`].join(' ');
+  log('Summary [GMAIL]', `Summary of Activity for last ${tracker.intervalMin}m - ${metrics}`);
+};
+
+const recordGmailSummary = (ctx, { ok, newMail = 0 }) => {
+  const tracker = ctx.gmailSummary;
+  if (!tracker || tracker.intervalMs <= 0) return;
+
+  tracker.pollOk += ok ? 1 : 0;
+  tracker.pollBad += ok ? 0 : 1;
+  const newMailCount = Number.isFinite(newMail) ? newMail : 0;
+  tracker.newMail += Math.max(0, newMailCount);
+
+  const now = Date.now();
+  const isFirstWindow = tracker.windowStart === null;
+  if (isFirstWindow) {
+    tracker.windowStart = now;
+  }
+  if (isFirstWindow || now - tracker.windowStart >= tracker.intervalMs) {
+    logGmailSummary(ctx);
+    resetGmailSummaryWindow(tracker, now);
+  }
+};
 
 const createLlmQueue = ({ maxConcurrency, maxQueue, processFn, onDrop, onStats }) => {
   const pending = [];
@@ -417,6 +465,7 @@ const pollGmail = async (ctx) => {
   const windowStartMs = windowMs > 0 ? Math.max(0, now - windowMs - graceMs) : 0;
   const effectiveQuery = buildGmailQuery(ctx.config.gmailQuery, windowStartMs);
   ctx.stateManager.recordGmailPoll();
+  const shouldLogPerPoll = !ctx.gmailSummary || ctx.gmailSummary.intervalMs <= 0;
   try {
     const effectiveMaxResults = ctx.config.pollMaxResults;
     const messages = await listMessages(ctx.gmailClient, {
@@ -425,14 +474,17 @@ const pollGmail = async (ctx) => {
     });
     ctx.stateManager.setGmailOk();
     const newMessages = messages.filter((m) => !state.processed[m.id]);
-    logEvent('GMAIL', {
-      poll: 'ok',
-      new: newMessages.length,
-      max_results: effectiveMaxResults,
-      query: effectiveQuery,
-      window_ms: ctx.config.pollWindowMs ?? ctx.config.pollIntervalMs,
-      grace_ms: ctx.config.pollGraceMs
-    });
+    if (shouldLogPerPoll) {
+      logEvent('GMAIL', {
+        poll: 'ok',
+        new: newMessages.length,
+        max_results: effectiveMaxResults,
+        query: effectiveQuery,
+        window_ms: ctx.config.pollWindowMs ?? ctx.config.pollIntervalMs,
+        grace_ms: ctx.config.pollGraceMs
+      });
+    }
+    recordGmailSummary(ctx, { ok: true, newMail: newMessages.length });
     for (const m of newMessages) {
       ctx.llmQueue.enqueue({ id: m.id, messageMeta: m });
     }
@@ -440,6 +492,7 @@ const pollGmail = async (ctx) => {
     ctx.stateManager.revertGmailPoll(previousPollAt);
     ctx.stateManager.setGmailError(err.message);
     logEvent('GMAIL', { poll: 'fail', error: err.message });
+    recordGmailSummary(ctx, { ok: false, newMail: 0 });
   } finally {
     await ctx.stateManager.save();
     ctx.pollLock = false;
@@ -568,6 +621,7 @@ const buildStatusSnapshot = (ctx) => {
       poll_grace_ms: ctx.config.pollGraceMs,
       poll_window_ms: ctx.config.pollWindowMs ?? ctx.config.pollIntervalMs,
       gmail_query: ctx.config.gmailQuery,
+      gmail_summary_interval_min: ctx.gmailSummary?.intervalMin ?? ctx.config.gmailSummaryIntervalMin,
       max_sms_chars: ctx.config.maxSmsChars,
       max_email_body_chars: ctx.config.maxEmailBodyChars,
       max_llm_concurrency: ctx.config.maxLlmConcurrency,
@@ -653,6 +707,7 @@ export const startApp = async (overrides = {}) => {
     onDecision: overrides.onDecision,
     pollLock: false,
     pollTimer: null,
+    gmailSummary: createGmailSummaryTracker(config.gmailSummaryIntervalMin),
     dashboardFirstLogged: false
   };
 
