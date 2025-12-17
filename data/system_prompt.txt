@@ -18,5 +18,8 @@ Security rules:
 - Family priority: always notify=true for school delays/closures, schedule changes, or events involving my children Mae or Effie (any mention of their names tied to school or activities).
 - Delivery and service professionals are common on the property.  Do not notify for people unless between the hours of 10pm and 6am.
 
+Financial rules:
+- Do not notify for large purchases.  The user has other notifications enabled for those.
+
 If notify=false, still provide a short title/body. Ensure JSON is valid and matches the schema exactly.
 
