@@ -1,3 +1,5 @@
+import { extractUrls, analyzeSender } from './url_extract.js';
+
 const DEFAULT_MAX_BODY_CHARS = parseInt(process.env.MAX_EMAIL_BODY_CHARS || '4000', 10);
 
 const normalizeWhitespace = (text) => {
@@ -165,6 +167,10 @@ export const trimEmailForLLM = (email, opts = {}) => {
     messageId: email.message_id || email.id || ''
   };
 
+  // Extract and analyze URLs for phishing detection
+  const urlAnalysis = extractUrls(originalBody);
+  const senderAnalysis = analyzeSender(email.from);
+
   const trimmed = {
     ...email,
     headers,
@@ -175,7 +181,15 @@ export const trimEmailForLLM = (email, opts = {}) => {
     date: headers.date,
     body_text: trimmedBody,
     attachments,
-    stats
+    stats,
+    // Phishing detection data
+    url_analysis: {
+      extracted_urls: urlAnalysis.urls,
+      has_mismatched_urls: urlAnalysis.has_mismatched_urls,
+      has_suspicious_domains: urlAnalysis.has_suspicious_domains,
+      warning: urlAnalysis.summary
+    },
+    sender_analysis: senderAnalysis
   };
 
   if (capResult.excerpt) trimmed.body_excerpt = capResult.excerpt;

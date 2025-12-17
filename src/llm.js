@@ -73,6 +73,24 @@ export const parseLLMJson = (content) => {
   throw new Error(`Invalid JSON from LLM: ${firstError ? firstError.message : 'no JSON object found'}`);
 };
 
+const buildTimeContext = () => {
+  const now = new Date();
+  const options = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZoneName: 'short'
+  };
+  const formatted = now.toLocaleString('en-US', options);
+  const hour = now.getHours();
+  const timeOfDay = hour < 6 ? 'night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+  return `Current date/time: ${formatted} (${timeOfDay})`;
+};
+
 export const callLLM = async ({
   llmBaseUrl,
   apiKey,
@@ -85,7 +103,8 @@ export const callLLM = async ({
   systemPromptPath
 }) => {
   const url = `${llmBaseUrl.replace(/\/+$/, '')}/v1/chat/completions`;
-  const systemPrompt = getSystemPrompt(systemPromptPath);
+  const basePrompt = getSystemPrompt(systemPromptPath);
+  const systemPrompt = `${buildTimeContext()}\n\n${basePrompt}`;
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: buildUserPrompt(emailObj, maxSmsChars) }

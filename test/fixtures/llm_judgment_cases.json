@@ -10,5 +10,17 @@
     "raw_file": "raw/judge_nonurgent.eml",
     "expect_notify": false,
     "description": "Marketing newsletter with no action required"
+  },
+  {
+    "id": "phishing_fake_urgent",
+    "raw_file": "raw/phishing_fake_urgent.eml",
+    "expect_notify": false,
+    "description": "Phishing: Fake iCloud storage warning with mismatched URLs - display text shows apple.com but links to scam domains"
+  },
+  {
+    "id": "legit_urgent_bank",
+    "raw_file": "raw/legit_urgent_bank.eml",
+    "expect_notify": true,
+    "description": "Legitimate: Bank fraud alert with real wellsfargo.com URLs - urgent and should notify"
   }
 ]

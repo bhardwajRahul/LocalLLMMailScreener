@@ -398,12 +398,84 @@ Edit `data/system_prompt.txt` to customize:
 
 - Polls Gmail inbox on the configured interval and immediately enqueues any new IDs found (bounded by `MAX_LLM_QUEUE`, default 20). The Gmail poll itself does not wait for LLM work. Oldest queued emails are dropped (counted in stats) if the queue would exceed the cap. Each poll still uses `after:<now - (POLL_WINDOW_MS||POLL_INTERVAL_MS) - POLL_GRACE_MS>` (default 5s grace); widen the window if processing delays exceed the interval. Successful polls are summarized every `GMAIL_SUMMARY_INTERVAL_MIN` minutes (default 15, first summary after the first poll), while failures still log immediately.
 - Emails are normalized and trimmed before LLM use (reply chains/forwards and footer noise removed, attachments kept as metadata only, body capped to `MAX_EMAIL_BODY_CHARS`, default 4000, with head+tail preserved).
+- **Phishing Detection**: URLs are extracted and analyzed before LLM processing (see [Phishing Detection](#phishing-detection) below). The LLM receives structured `url_analysis` and `sender_analysis` fields to identify spearphishing attempts.
 - Every enqueued email is sent to the local LLM (`/v1/chat/completions`), enforcing strict JSON output, with `MAX_LLM_CONCURRENCY` parallel workers (default 3).
 - If `notify=true`, sends via the configured notification service:
   - **Twilio SMS**: truncated to `MAX_SMS_CHARS`, or skipped when `DRY_RUN=true`.
   - **Pushover**: emergency mode (priority=2) with `retry=100`, `expire=7d`, using the same truncated body.
 - State (processed IDs, decisions, sends, token stats, queue stats) persists to `STATE_PATH` atomically.
 - Dashboard shows Gmail/LLM/Notification health, token estimates (total + last 24h), LLM queue depth/drops, average TPS over the last five emails, and recent notifications.
+
+---
+
+### Phishing Detection
+
+The system includes automatic URL extraction and analysis to help the LLM identify spearphishing attempts. This is critical because phishing emails often use urgent language (which would normally trigger notifications) but contain deceptive links.
+
+#### How It Works
+
+1. **URL Extraction** (`src/url_extract.js`): Before sending email to the LLM, all URLs are extracted from the body:
+   - HTML anchor tags: captures both display text and actual `href` destination
+   - Plaintext URLs: finds `http://` and `https://` links
+
+2. **Root Domain Analysis**: For each URL, the root domain is extracted:
+   - `mail.google.com` → `google.com`
+   - `paypal.scammer.ru` → `scammer.ru` (NOT PayPal!)
+   - Handles multi-part TLDs like `.co.uk`, `.com.au`
+
+3. **Mismatch Detection**: Flags when display text shows one domain but link goes elsewhere:
+   - Display: `https://apple.com/verify` → Href: `https://apple.id-verify.scamsite.ru`
+   - This is a classic phishing technique
+
+4. **Suspicious Domain Detection**: Identifies domains that contain brand names but aren't legitimate:
+   - `google-security.com` (contains "google" but isn't google.com)
+   - `paypal-verify.net` (contains "paypal" but isn't paypal.com)
+
+#### Data Provided to LLM
+
+Each email sent to the LLM includes:
+
+```json
+{
+  "url_analysis": {
+    "extracted_urls": [
+      {
+        "display_text": "https://apple.com/verify",
+        "url": "https://apple.id-verify.scamsite.ru/account",
+        "root_domain": "scamsite.ru",
+        "display_domain": "apple.com",
+        "mismatch": true,
+        "suspicious": false
+      }
+    ],
+    "has_mismatched_urls": true,
+    "has_suspicious_domains": false,
+    "warning": "URL MISMATCH DETECTED: \"https://apple.com/verify\" actually links to scamsite.ru"
+  },
+  "sender_analysis": {
+    "email": "support@apple-id-verification.scamsite.ru",
+    "display_name": "iCloud Support",
+    "domain": "apple-id-verification.scamsite.ru",
+    "root_domain": "scamsite.ru"
+  }
+}
+```
+
+#### System Prompt Rules
+
+The system prompt (`data/system_prompt.txt`) includes rules for the LLM to use this data:
+
+- If `has_mismatched_urls` is true → phishing → `notify: false`
+- If `has_suspicious_domains` is true → phishing → `notify: false`
+- Legitimate urgent emails (bank fraud alerts, etc.) have URLs pointing to the actual company domain
+- When in doubt: mismatched URLs + urgency = phishing = suppress
+
+#### Testing Phishing Detection
+
+The test suite includes real LLM judgment tests for phishing scenarios (run with `TEST_REAL_LLM=1`):
+
+- `phishing_fake_urgent.eml`: Fake iCloud storage warning with deceptive URLs → should NOT notify
+- `legit_urgent_bank.eml`: Real bank fraud alert with legitimate URLs → SHOULD notify
 
 ---
 

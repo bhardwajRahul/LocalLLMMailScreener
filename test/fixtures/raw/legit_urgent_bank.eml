@@ -1,0 +1,38 @@
+From: Fraud Alert <alerts@wellsfargo.com>
+To: Mark <mark@example.com>
+Subject: ACTION REQUIRED: Unusual activity detected on your account
+Date: Fri, 01 Mar 2024 10:30:00 -0000
+Message-ID: <legit_urgent_bank@example.com>
+Content-Type: text/html; charset="UTF-8"
+
+<html>
+<body>
+<p>Dear Mark,</p>
+
+<p>We detected unusual activity on your Wells Fargo checking account ending in **** 7823.</p>
+
+<p><strong>Transaction Details:</strong></p>
+<ul>
+<li>Amount: $2,847.00</li>
+<li>Merchant: ELECTRONICS INTL - SINGAPORE</li>
+<li>Date: March 1, 2024 at 3:42 AM EST</li>
+<li>Location: Singapore</li>
+</ul>
+
+<p>If you did NOT authorize this transaction, please contact us immediately:</p>
+
+<p><a href="https://www.wellsfargo.com/fraud-alert">Report Fraud at wellsfargo.com</a></p>
+
+<p>Or call our 24/7 Fraud Hotline: 1-800-869-3557</p>
+
+<p>If this was you, no action is needed. We've temporarily limited your card as a precaution.</p>
+
+<p>To restore full access, sign in to your account:</p>
+<p><a href="https://connect.secure.wellsfargo.com/auth/login">https://connect.secure.wellsfargo.com/auth/login</a></p>
+
+<p>Thank you for banking with Wells Fargo.</p>
+
+<p>Wells Fargo Fraud Protection Team</p>
+</body>
+</html>
+
