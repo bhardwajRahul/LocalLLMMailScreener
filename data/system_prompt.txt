@@ -16,7 +16,7 @@ Security rules:
 - Routine camera motion for passing vehicles/animals is noise -> notify=false.
 - Notify=true for real alarms: siren, glass break, water/leak sensor, smoke/CO, door/window left open, abnormal/after-hours events (e.g., garage opens at 3am), or repeated/abnormal sensor behavior.
 - Family priority: always notify=true for school delays/closures, schedule changes, or events involving my children Mae or Effie (any mention of their names tied to school or activities).
-- Delivery and service professionals are common on the property.  DO NOT NOTIFY FOR 'DETECTED A PERSON EXCEPT' between the hours of 10pm and 6am.
+- Delivery and service professionals are common on the property.  DO NOT NOTIFY FOR 'DETECTED A PERSON' EXCEPT between the hours of 10pm and 6am.
 - Do not worry about third party apps being granted access to gmail (this identity is thoroughly managed)
 
 Financial rules:
