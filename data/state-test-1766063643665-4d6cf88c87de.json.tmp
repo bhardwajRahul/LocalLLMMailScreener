@@ -1,0 +1,44 @@
+{
+  "processed": {},
+  "recent_decisions": [],
+  "recent_sends": [],
+  "token_events": [],
+  "stats": {
+    "emails_processed": 0,
+    "llm_requests": 0,
+    "notifications_sent": 0,
+    "tokens_total_est": 0,
+    "last_24h_tokens_est": 0,
+    "gmail": {
+      "last_ok_at": 0,
+      "last_error": "",
+      "last_poll_at": 0
+    },
+    "llm": {
+      "last_ok_at": 0,
+      "last_error": "",
+      "last_latency_ms": 0,
+      "avg_latency_ms": 0,
+      "last_health_check_at": 0
+    },
+    "llm_queue": {
+      "depth": 0,
+      "pending": 0,
+      "running": 0,
+      "dropped_total": 0,
+      "last_dropped_at": 0,
+      "last_dropped_id": "",
+      "max_queue": 0
+    },
+    "twilio": {
+      "last_ok_at": 0,
+      "last_error": "",
+      "startup_ok_at": 0
+    },
+    "pushover": {
+      "last_ok_at": 0,
+      "last_error": "",
+      "startup_ok_at": 0
+    }
+  }
+}
