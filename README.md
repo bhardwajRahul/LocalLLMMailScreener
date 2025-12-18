@@ -345,6 +345,7 @@ GMAIL_QUERY=newer_than:1d           # Gmail search filter
 MAX_SMS_CHARS=900                   # Notification body limit
 MAX_EMAIL_BODY_CHARS=4000           # Email body sent to LLM
 DRY_RUN=false                       # Set true to skip actual notifications
+LOG_TIMEZONE=America/New_York       # Timezone for logs (default: UTC)
 ```
 
 #### Running
@@ -374,6 +375,7 @@ Visit `http://localhost:3000/` for the dashboard. JSON status is at `GET /api/st
 - `MAX_SMS_CHARS`, `MAX_EMAIL_BODY_CHARS`
 - `MAX_LLM_CONCURRENCY` (alias: legacy `MAX_CONCURRENCY`), `MAX_LLM_QUEUE` (default 20)
 - `DRY_RUN`, `LOG_DASHBOARD_REQUESTS` (default false)
+- `LOG_TIMEZONE` (IANA timezone for logs and LLM time context, e.g. `America/New_York`; default `UTC`)
 - `LLM_*` (base URL/model/temperature/timeouts), `SYSTEM_PROMPT_PATH` (default `./data/system_prompt.txt`)
 
 ---

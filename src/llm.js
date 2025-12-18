@@ -75,6 +75,7 @@ export const parseLLMJson = (content) => {
 
 const buildTimeContext = () => {
   const now = new Date();
+  const tz = process.env.LOG_TIMEZONE || 'UTC';
   const options = {
     weekday: 'long',
     year: 'numeric',
@@ -83,10 +84,11 @@ const buildTimeContext = () => {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,
+    timeZone: tz,
     timeZoneName: 'short'
   };
   const formatted = now.toLocaleString('en-US', options);
-  const hour = now.getHours();
+  const hour = parseInt(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: tz }), 10);
   const timeOfDay = hour < 6 ? 'night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
   return `Current date/time: ${formatted} (${timeOfDay})`;
 };

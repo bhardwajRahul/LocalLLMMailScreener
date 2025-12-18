@@ -14,7 +14,14 @@ import { sendPushover, checkPushoverCredentials } from './pushover.js';
 import { createStateManager } from './state.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const log = (...args) => console.log(new Date().toISOString(), ...args);
+const log = (...args) => {
+  const tz = process.env.LOG_TIMEZONE || 'UTC';
+  const ts = new Date().toLocaleString('en-CA', {
+    timeZone: tz,
+    hour12: false
+  }).replace(', ', 'T');
+  console.log(ts, ...args);
+};
 const fmtVal = (v) => {
   if (v === undefined || v === null) return '-';
   if (typeof v === 'number' || typeof v === 'boolean') return v;
@@ -72,7 +79,8 @@ export const buildConfig = (env = process.env) => ({
   twilioTo: env.TWILIO_TO,
   pushoverToken: env.PUSHOVER_TOKEN || env.PUSHOVER_API_TOKEN,
   pushoverUser: env.PUSHOVER_USER,
-  pushoverDevice: env.PUSHOVER_DEVICE
+  pushoverDevice: env.PUSHOVER_DEVICE,
+  logTimezone: env.LOG_TIMEZONE || 'UTC'
 });
 
 const createGmailSummaryTracker = (intervalMinRaw) => {
