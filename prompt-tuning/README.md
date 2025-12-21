@@ -215,10 +215,10 @@ node scripts/tune.js --verbose    # Extra logging
      │                                             │
      │  Receives:                                  │
      │  • Current system prompt                    │
-     │  • FP/FN data with reasoning               │
-     │  • Full attempts_log history               │
-     │  • Parseltongue failure context (if any)   │
-     │  • Security-critical guidance              │
+     │  • FP/FN data with reasoning                │
+     │  • Full attempts_log history                │
+     │  • Parseltongue failure context (if any)    │
+     │  • Security-critical guidance               │
      │                                             │
      │  Outputs:                                   │
      │  • Hypothesis                               │
