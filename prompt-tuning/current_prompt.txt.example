@@ -1,0 +1,13 @@
+# Current Prompt Template
+
+Copy your production system prompt here before starting the tuning process:
+
+  cp ../data/system_prompt.txt current_prompt.txt
+
+The tuning agent will iteratively modify this file. If you're happy with the 
+results, manually copy it back to production:
+
+  cp current_prompt.txt ../data/system_prompt.txt
+
+Note: Each attempt creates a backup at prompt_vN.txt before making changes.
+

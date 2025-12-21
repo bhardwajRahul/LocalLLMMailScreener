@@ -3,6 +3,15 @@ npm-cache
 data/state*.json
 .env
 
-# Prompt tuning personal data
+# Prompt tuning personal data and runtime files
 prompt-tuning/notified/
 prompt-tuning/notnotified/
+prompt-tuning/last_eval_results.json
+prompt-tuning/last_parseltongue_failure.json
+prompt-tuning/.env
+
+# Prompt tuning session data (user-specific work product)
+prompt-tuning/attempts_log.md
+prompt-tuning/current_prompt.txt
+prompt-tuning/prompt_v*.txt
+prompt-tuning/config.json

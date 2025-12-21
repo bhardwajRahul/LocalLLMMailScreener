@@ -97,7 +97,7 @@ Each email file in `notified/` or `notnotified/` contains:
 ```json
 {
   "max_attempts": 10,
-  "model": "claude-sonnet-4-5-20241022",
+  "model": "claude-sonnet-4-5-20250929",
   "temperature": 0.3,
   "stop_on_zero_errors": true,
   "regression_threshold": 0.1,
