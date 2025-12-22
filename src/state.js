@@ -6,6 +6,12 @@ const defaultState = () => ({
   recent_decisions: [],
   recent_sends: [],
   token_events: [],
+  alerts: {
+    gmail_down_at: 0,
+    gmail_last_alert_at: 0,
+    llm_down_at: 0,
+    llm_last_alert_at: 0
+  },
   stats: {
     emails_processed: 0,
     llm_requests: 0,
@@ -44,6 +50,7 @@ export const createStateManager = ({
       state = {
         ...base,
         ...parsed,
+        alerts: { ...base.alerts, ...(parsed.alerts || {}) },
         stats: { ...base.stats, ...(parsed.stats || {}) }
       };
       computeLast24h();
@@ -121,10 +128,12 @@ export const createStateManager = ({
   const setGmailOk = () => {
     state.stats.gmail.last_ok_at = Date.now();
     state.stats.gmail.last_error = '';
+    state.alerts.gmail_down_at = 0;
   };
 
   const setGmailError = (errMsg) => {
     state.stats.gmail.last_error = errMsg;
+    state.alerts.gmail_down_at ||= Date.now();
   };
 
   const setLLMOk = (latencyMs) => {
@@ -134,10 +143,12 @@ export const createStateManager = ({
     state.stats.llm.last_latency_ms = latencyMs;
     const prevAvg = state.stats.llm.avg_latency_ms || 0;
     state.stats.llm.avg_latency_ms = prevAvg === 0 ? latencyMs : Math.round((prevAvg + latencyMs) / 2);
+    state.alerts.llm_down_at = 0;
   };
 
   const setLLMError = (errMsg) => {
     state.stats.llm.last_error = errMsg;
+    state.alerts.llm_down_at ||= Date.now();
   };
 
   const setLLMHealthCheck = (ok, latencyMs, errMsg = '') => {
@@ -181,6 +192,12 @@ export const createStateManager = ({
     state.stats.pushover.last_error = errMsg;
   };
 
+  const markOutageAlertSent = (service) => {
+    const now = Date.now();
+    if (service === 'gmail') state.alerts.gmail_last_alert_at = now;
+    if (service === 'llm') state.alerts.llm_last_alert_at = now;
+  };
+
   const getState = () => state;
 
   return {
@@ -204,6 +221,7 @@ export const createStateManager = ({
     setTwilioOk,
     setTwilioError,
     setPushoverOk,
-    setPushoverError
+    setPushoverError,
+    markOutageAlertSent
   };
 };

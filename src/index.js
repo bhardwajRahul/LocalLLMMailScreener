@@ -369,6 +369,7 @@ const processSingleMessage = async (ctx, messageMeta) => {
       };
     } catch (err) {
       ctx.stateManager.setLLMError(err.message);
+      await maybeSendOutageAlert(ctx);
       decision = {
         id: messageId,
         notify: false,
@@ -565,6 +566,7 @@ const pollGmail = async (ctx) => {
     ctx.stateManager.setGmailError(err.message);
     logEvent('GMAIL', { poll: 'fail', error: err.message });
     recordGmailSummary(ctx, { ok: false, newMail: 0 });
+    await maybeSendOutageAlert(ctx);
   } finally {
     await ctx.stateManager.save();
     ctx.pollLock = false;
@@ -583,6 +585,9 @@ const maybeCheckLLMHealth = async (ctx) => {
     timeoutMs: Math.min(ctx.config.llmTimeoutMs, 10000)
   });
   ctx.stateManager.setLLMHealthCheck(res.ok, res.latencyMs, res.error);
+  if (!res.ok) {
+    await maybeSendOutageAlert(ctx);
+  }
   await ctx.stateManager.save();
 };
 
@@ -674,6 +679,132 @@ const buildHealth = (ctx, stats) => {
   }
 
   return health;
+};
+
+const outageNeedsAlert = (alerts = {}, key) => {
+  const downAt = alerts[`${key}_down_at`] || 0;
+  const alertedAt = alerts[`${key}_last_alert_at`] || 0;
+  return downAt > 0 && alertedAt < downAt;
+};
+
+const formatSince = (ts) => (ts ? new Date(ts).toISOString() : 'unknown time');
+
+const maybeSendOutageAlert = async (ctx) => {
+  if (ctx.outageAlertInFlight) return ctx.outageAlertInFlight;
+
+  const run = (async () => {
+    const state = ctx.stateManager.getState();
+    const stats = state.stats || {};
+    const alerts = state.alerts || {};
+
+    const down = [];
+    if (outageNeedsAlert(alerts, 'gmail')) {
+      down.push({
+        key: 'gmail',
+        label: 'Gmail',
+        error: stats.gmail?.last_error || 'unknown error',
+        since: alerts.gmail_down_at
+      });
+    }
+    if (outageNeedsAlert(alerts, 'llm')) {
+      down.push({
+        key: 'llm',
+        label: 'LLM',
+        error: stats.llm?.last_error || 'unknown error',
+        since: alerts.llm_down_at
+      });
+    }
+
+    if (!down.length) return;
+
+    const health = buildHealth(ctx, stats);
+    if (!health.notification?.ok) {
+      logEvent('ALERT', { send: 'skip', reason: 'notification_unhealthy' });
+      return;
+    }
+
+    const title = `ALERT: ${down.map((d) => d.label).join(' + ')} offline`;
+    const lines = down.map((d) => `${d.label} down: ${d.error} (since ${formatSince(d.since)})`);
+    const message = `${title}\n${lines.join('\n')}`.trim();
+    const body = message.slice(0, ctx.config.maxSmsChars);
+    const service = ctx.config.notificationService;
+
+    try {
+      if (service === 'twilio') {
+        const sendResult = await sendSms({
+          client: ctx.twilioClient,
+          to: ctx.config.twilioTo,
+          from: ctx.config.twilioFrom,
+          body,
+          dryRun: ctx.config.dryRun
+        });
+        ctx.stateManager.setTwilioOk();
+        ctx.stateManager.addSend({
+          sent_at: Date.now(),
+          reason: 'service_outage',
+          urgency: 'critical',
+          notification_provider: 'twilio',
+          notification_id: sendResult.sid,
+          sms_preview: body,
+          outage_services: down.map((d) => d.key)
+        });
+        logEvent('ALERT', {
+          send: 'ok',
+          provider: 'twilio',
+          services: down.map((d) => d.key).join('+'),
+          sid: sendResult.sid
+        });
+      } else if (service === 'pushover') {
+        const sendResult = await ctx.pushoverSender({
+          token: ctx.config.pushoverToken,
+          user: ctx.config.pushoverUser,
+          device: ctx.config.pushoverDevice,
+          title,
+          message: body,
+          priority: 2,
+          retry: 60,
+          expire: 60 * 60,
+          dryRun: ctx.config.dryRun
+        });
+        ctx.stateManager.setPushoverOk();
+        ctx.stateManager.addSend({
+          sent_at: Date.now(),
+          reason: 'service_outage',
+          urgency: 'critical',
+          notification_provider: 'pushover',
+          notification_id: sendResult.receipt,
+          pushover_receipt: sendResult.receipt,
+          sms_preview: body,
+          outage_services: down.map((d) => d.key)
+        });
+        logEvent('ALERT', {
+          send: 'ok',
+          provider: 'pushover',
+          services: down.map((d) => d.key).join('+'),
+          receipt: sendResult.receipt
+        });
+      } else {
+        const msg = `Notification service not recognized: ${service}`;
+        ctx.stateManager.setTwilioError(msg);
+        ctx.stateManager.setPushoverError(msg);
+        logEvent('ALERT', { send: 'fail', error: msg });
+        return;
+      }
+
+      down.forEach(({ key }) => ctx.stateManager.markOutageAlertSent(key));
+      await ctx.stateManager.save();
+    } catch (err) {
+      if (service === 'twilio') ctx.stateManager.setTwilioError(err.message);
+      if (service === 'pushover') ctx.stateManager.setPushoverError(err.message);
+      logEvent('ALERT', { send: 'fail', provider: service, error: err.message });
+    }
+  })();
+
+  ctx.outageAlertInFlight = run.finally(() => {
+    ctx.outageAlertInFlight = null;
+  });
+
+  return ctx.outageAlertInFlight;
 };
 
 const buildStatusSnapshot = (ctx) => {
@@ -1180,6 +1311,7 @@ export const startApp = async (overrides = {}) => {
     pushoverValidator,
     stateManager,
     llmQueue: null,
+    outageAlertInFlight: null,
     callLLM: overrides.llmCaller || callLLM,
     llmHealthCheck: overrides.llmHealthChecker || healthCheckLLM,
     onDecision: overrides.onDecision,

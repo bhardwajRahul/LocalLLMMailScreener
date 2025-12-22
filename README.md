@@ -306,6 +306,8 @@ Set `NOTIFICATION_SERVICE` to `twilio` or `pushover` in your `.env`:
 - Set: `PUSHOVER_TOKEN` (or `PUSHOVER_API_TOKEN`), `PUSHOVER_USER`, optionally `PUSHOVER_DEVICE`
 - Pushover uses emergency priority (level 2) with retry/acknowledge
 
+**Outage alerts:** If Gmail polling or the LLM goes down while your notification channel is healthy, the app sends a high-priority outage notification (Twilio SMS or Pushover priority 2) once per incident so you know screening is paused.
+
 #### Configuration
 
 Copy `.env.example` to `.env` and configure:
@@ -570,7 +572,9 @@ Unit tests for URL extraction (`npm test`) cover:
 
 A separate test suite evaluates your LLM's resistance to prompt injection attacks. These tests are **not** part of `npm test` — they're designed to probe whether adversarial emails can manipulate your LLM into sending unwanted notifications.
 
-**Configuration:** Uses your existing `.env` settings (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`, etc.).
+**Configuration:** Uses your existing `.env` settings (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`, etc.). Run with `npm run test:injection` (this suite only runs when explicitly invoked).
+- CLI flags: `--list`, `--id=<case>`, `--category=basic|parseltongue`, `--filter=<pattern>`
+- Env knobs: `TEST_LLM_DEBUG=1` (log raw responses), `DRY_RUN=1` (parse-only, no LLM call)
 
 **Test Categories:**
 

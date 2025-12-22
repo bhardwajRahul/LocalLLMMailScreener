@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "NO_AUTO_START=1 node --test test/*.test.js --test-name-pattern='^(?!\\[Prompt Injection\\])'",
-    "test:injection": "node test/prompt-injection.test.js"
+    "test:injection": "node test/prompt-injection.suite.js"
   },
   "dependencies": {
     "axios": "^1.6.8",
