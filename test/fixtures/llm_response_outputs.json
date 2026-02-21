@@ -133,6 +133,20 @@
     }
   },
   {
+    "id": "think_block_no_opening_tag",
+    "content_lines": [
+      "Let me analyze this email.",
+      "</think>",
+      "{\"notify\":false,\"message_packet\":{\"title\":\"Promo\",\"body\":\"Sale\",\"urgency\":\"low\"},\"confidence\":0.85,\"reason\":\"marketing\"}"
+    ],
+    "expected": {
+      "notify": false,
+      "message_packet": { "title": "Promo", "body": "Sale", "urgency": "low" },
+      "confidence": 0.85,
+      "reason": "marketing"
+    }
+  },
+  {
     "id": "no_json_error",
     "content_lines": ["I cannot provide that output right now."],
     "shouldError": true

@@ -24,6 +24,17 @@ test('extracts JSON when text precedes the object', () => {
   assert.strictEqual(parsed.message_packet.urgency, 'normal');
 });
 
+test('parses JSON when <think> block has no opening tag (Qwen Thinking format)', () => {
+  const content = `Let me analyze this...
+The email appears urgent.
+</think>
+{"notify":true,"message_packet":{"title":"Alert","body":"Body","urgency":"high"},"confidence":0.9,"reason":"urgent"}`;
+
+  const parsed = parseLLMJson(content);
+  assert.strictEqual(parsed.notify, true);
+  assert.strictEqual(parsed.message_packet.title, 'Alert');
+});
+
 test('throws when no JSON object is present', () => {
   assert.throws(() => parseLLMJson('<think>nothing useful</think>'), /Invalid JSON from LLM/);
 });

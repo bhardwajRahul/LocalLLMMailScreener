@@ -391,8 +391,12 @@ const processSingleMessage = async (ctx, messageMeta) => {
         decided_at: Date.now()
       };
     } catch (err) {
-      ctx.stateManager.setLLMError(err.message);
-      await maybeSendOutageAlert(ctx);
+      if (err.isParseError) {
+        log('LLM responded but JSON parse failed (thinking model truncation?)', err.message);
+      } else {
+        ctx.stateManager.setLLMError(err.message);
+        await maybeSendOutageAlert(ctx);
+      }
       decision = {
         id: messageId,
         notify: false,

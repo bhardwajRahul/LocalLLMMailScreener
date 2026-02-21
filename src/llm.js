@@ -38,7 +38,13 @@ MAX_SMS_CHARS value: ${maxSmsChars}
 Return ONLY the JSON result following the schema.`;
 };
 
-const stripLeadingThinkBlock = (content) => content.replace(/^<think>[\s\S]*?<\/think>\s*/i, '').trim();
+const stripLeadingThinkBlock = (content) => {
+  const thinkEndMatch = content.match(/<\/think>\s*/i);
+  if (thinkEndMatch) {
+    return content.slice(thinkEndMatch.index + thinkEndMatch[0].length).trim();
+  }
+  return content.trim();
+};
 
 export const parseLLMJson = (content) => {
   if (!content || typeof content !== 'string') {
@@ -132,7 +138,14 @@ export const callLLM = async ({
     throw new Error('LLM response missing content');
   }
   const content = choice.message.content.trim();
-  const parsed = parseLLMJson(content);
+  let parsed;
+  try {
+    parsed = parseLLMJson(content);
+  } catch (parseErr) {
+    const err = new Error(parseErr.message);
+    err.isParseError = true;
+    throw err;
+  }
 
   const usage = response.data?.usage;
   const inputChars = JSON.stringify(payload)?.length || 0;
