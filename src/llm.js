@@ -128,16 +128,44 @@ export const callLLM = async ({
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
   const start = Date.now();
-  const response = await axios.post(url, payload, {
+  const response = await axios.post(url, { ...payload, stream: true }, {
     headers,
-    timeout: timeoutMs
+    timeout: timeoutMs,
+    responseType: 'stream'
   });
+
+  let firstTokenAt = 0;
+  let content = '';
+  let usageData = null;
+  let buffer = '';
+
+  for await (const chunk of response.data) {
+    buffer += chunk.toString();
+    while (true) {
+      const nl = buffer.indexOf('\n');
+      if (nl === -1) break;
+      const line = buffer.slice(0, nl).trim();
+      buffer = buffer.slice(nl + 1);
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') continue;
+      try {
+        const event = JSON.parse(data);
+        const delta = event.choices?.[0]?.delta?.content || '';
+        if (delta && !firstTokenAt) firstTokenAt = Date.now();
+        content += delta;
+        if (event.usage) usageData = event.usage;
+      } catch (_) { /* skip unparseable chunks */ }
+    }
+  }
+
   const latencyMs = Date.now() - start;
-  const choice = response.data?.choices?.[0];
-  if (!choice?.message?.content) {
+  const ttftMs = firstTokenAt ? firstTokenAt - start : latencyMs;
+
+  content = content.trim();
+  if (!content) {
     throw new Error('LLM response missing content');
   }
-  const content = choice.message.content.trim();
   let parsed;
   try {
     parsed = parseLLMJson(content);
@@ -147,17 +175,21 @@ export const callLLM = async ({
     throw err;
   }
 
-  const usage = response.data?.usage;
   const inputChars = JSON.stringify(payload)?.length || 0;
   const outputChars = content.length;
-  const tokens = usage?.total_tokens
-    ? usage.total_tokens
-    : Math.ceil((inputChars + outputChars) / 4);
+  const promptTokens = usageData?.prompt_tokens || Math.ceil(inputChars / 4);
+  const completionTokens = usageData?.completion_tokens || Math.ceil(outputChars / 4);
+  const tokens = usageData?.total_tokens
+    ? usageData.total_tokens
+    : promptTokens + completionTokens;
 
   return {
     content,
     parsed,
     tokens,
+    promptTokens,
+    completionTokens,
+    ttftMs,
     latencyMs
   };
 };

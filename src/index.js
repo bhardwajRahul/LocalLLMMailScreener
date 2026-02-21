@@ -316,21 +316,35 @@ const domainFromEmail = (email = '') => {
 const tokenCountFromDecision = (decision) => decision?.tokens || 0;
 const computeRecentTps = (decisions, limit = 5) => {
   if (!Array.isArray(decisions) || decisions.length === 0) {
-    return { avg_tps: 0, samples: 0 };
+    return { avg_tps: 0, prompt_tps: 0, response_tps: 0, samples: 0 };
   }
   const latest = decisions.slice(-limit);
-  const samples = latest
-    .map((d) => {
-      const tokens = d.tokens || 0;
-      const latencyMs = d.llm_latency_ms || 0;
-      if (!latencyMs) return null;
-      const tps = tokens / (latencyMs / 1000);
-      return Number.isFinite(tps) ? tps : null;
-    })
-    .filter((v) => v !== null);
-  if (!samples.length) return { avg_tps: 0, samples: 0 };
-  const avg = samples.reduce((sum, v) => sum + v, 0) / samples.length;
-  return { avg_tps: Math.round(avg * 100) / 100, samples: samples.length };
+  const totalSamples = [];
+  const promptSamples = [];
+  const responseSamples = [];
+  for (const d of latest) {
+    const latencyMs = d.llm_latency_ms || 0;
+    if (!latencyMs) continue;
+    const totalTps = (d.tokens || 0) / (latencyMs / 1000);
+    if (Number.isFinite(totalTps)) totalSamples.push(totalTps);
+    const ttft = d.ttft_ms || 0;
+    if (ttft && d.prompt_tokens) {
+      const pTps = d.prompt_tokens / (ttft / 1000);
+      if (Number.isFinite(pTps)) promptSamples.push(pTps);
+    }
+    const genMs = latencyMs - (ttft || 0);
+    if (genMs > 0 && d.completion_tokens) {
+      const rTps = d.completion_tokens / (genMs / 1000);
+      if (Number.isFinite(rTps)) responseSamples.push(rTps);
+    }
+  }
+  const avg = (arr) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
+  return {
+    avg_tps: avg(totalSamples),
+    prompt_tps: avg(promptSamples),
+    response_tps: avg(responseSamples),
+    samples: totalSamples.length
+  };
 };
 
 const processSingleMessage = async (ctx, messageMeta) => {
@@ -381,6 +395,9 @@ const processSingleMessage = async (ctx, messageMeta) => {
         confidence: llmRes.parsed.confidence,
         reason: llmRes.parsed.reason,
         tokens: llmRes.tokens,
+        prompt_tokens: llmRes.promptTokens,
+        completion_tokens: llmRes.completionTokens,
+        ttft_ms: llmRes.ttftMs,
         llm_latency_ms: llmRes.latencyMs,
         gmail_link: gmailLink,
         from: parsed.from,
