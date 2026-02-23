@@ -113,7 +113,7 @@ export const callLLM = async ({
 }) => {
   const url = `${llmBaseUrl.replace(/\/+$/, '')}/v1/chat/completions`;
   const basePrompt = getSystemPrompt(systemPromptPath);
-  const systemPrompt = `${buildTimeContext()}\n\n${basePrompt}`;
+  const systemPrompt = `${basePrompt}\n\n${buildTimeContext()}`;
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: buildUserPrompt(emailObj, maxSmsChars) }
